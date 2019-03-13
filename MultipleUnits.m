@@ -1,0 +1,224 @@
+classdef MultipleUnits < handle
+    properties
+        units
+        patient
+        seizure
+        epoch
+        snr
+    end
+    
+    properties (SetAccess = private, Hidden = true)
+        current_order = 'none';
+    end
+    
+    methods
+        % constructor
+        function obj = MultipleUnits(varargin)
+            allowable = fieldnames(obj);
+            if mod(length(varargin),2) ~= 0
+                error('Inputs must be in name, value pairs');
+            end
+            for v = 1:2:length(varargin)
+                if find(ismember(allowable,varargin{v}))
+                    obj.(varargin{v}) = varargin{v+1};
+                else
+                    disp([9 'Not assigning ''' varargin{v} ''': not a property of MultipleUnits class']);
+                end
+            end
+            if isempty(obj.epoch)
+                obj.epoch = [-Inf Inf];
+            end
+        end
+        % add a SingleUnit object to this collection
+        function obj = add_unit(obj,unit)
+            if isempty(unit.UID)
+                unit.UID = length(obj.units) + 1;
+            end
+            obj.units = [obj.units unit];
+            if min(unit.times) < obj.epoch(1) | max(unit.times) > obj.epoch(2)
+                disp([9 'Heads up: this unit has spiketimes outside the currently set epoch for this collection']);
+            end
+            % need to fix the ordering if it's not currently set to none
+            if ~strcmp(obj.current_order,'none')
+                obj.(['order_by_' obj.current_order]);
+            end
+        end
+        % re-order units by rate
+        function order_by_rate(obj)
+            tot = zeros(1,length(obj.units));
+            for n = 1:length(obj.units)
+                tot(n) = length(obj.units(n).times);
+            end
+            [~,ord] = sort(tot,'ascend');
+            obj.units = obj.units(ord);
+            obj.current_order = 'rate';
+        end
+        % re-order units by channel
+        function order_by_channel(obj)
+            chan = zeros(1,length(obj.units));
+            for n = 1:length(obj.units)
+                chan(n) = obj.units(n).channel;
+            end
+            [~,ord] = sort(chan,'ascend');
+            obj.units = obj.units(ord);
+            obj.current_order = 'channel';
+        end
+        % simple raster plot (speedy)
+        function raster(obj,varargin)
+            settings.axes = gca;
+            for v = 1:2:length(varargin)
+                settings.(varargin{v}) = varargin{v+1};
+            end
+            full_t = [];
+            full_y = [];
+            for u = 1:length(obj.units)
+                %TODO: this doesn't need to be a loop. vectorize.
+                full_t = [full_t; obj.units(u).times];
+                full_y = [full_y u*ones(1,length(obj.units(u).times))];
+            end
+            plot(settings.axes,full_t,full_y,'k.','markersize',6);
+            xlim(settings.axes,obj.epoch);
+            ylim(settings.axes,[0 length(obj.units)])
+            xlabel(settings.axes,'Time (s)')
+            ylabel(settings.axes,['Neuron ranking (by ' obj.current_order ')']);
+            set(settings.axes,'tickdir','out');
+        end
+        % full raster plot (slow, but color-able)
+        function hdls = beefyraster(obj,varargin)
+            settings.base_color = 'k';
+            if isequal(get(0,'DefaultAxesColor'), [0 0 0])
+                settings.base_color = 'w';
+            end
+            settings.blackout = 0;
+            settings.highlight = [];
+            settings.axes = gca;
+            settings.in_color = [1 0 0];
+            for v = 1:2:length(varargin)
+                settings.(varargin{v}) = varargin{v+1};
+            end
+            if nargout > 0
+                hdls = cell(1,length(obj.units));
+            end
+            for n = 1:length(obj.units)
+                if length(obj.units(n).times) > 2
+                    if isfield(obj.units(n).extra, 'type') && ~settings.blackout && isempty(settings.highlight)
+                        if strcmp(obj.units(n).extra.type,'pc')
+                            col = settings.base_color;
+                        else
+                            col = settings.in_color;
+                        end
+                    else
+                        if isempty(settings.highlight)
+                            col = settings.base_color;
+                        else
+                            cols = lines(length(settings.highlight));
+                            highlighting = find(settings.highlight == obj.units(n).channel);
+                            if highlighting > 0
+                                col = cols(highlighting,:);
+                            else
+                                col = settings.base_color;
+                            end
+                        end
+                    end
+                    if nargout > 0
+                        hdls{n} = line(settings.axes,[obj.units(n).times obj.units(n).times],[n-1 n],'color',col);
+                    else
+                        line(settings.axes,[obj.units(n).times obj.units(n).times],[n-1 n],'color',col);
+                    end
+                end
+            end
+            if min(obj.epoch) < 0 && max(obj.epoch) > 0
+                line(settings.axes,[0 0],[0 n],'color','r')
+            end
+            if ~isempty(settings.highlight)
+                for c = 1:length(cols)
+                    disp([9 num2str(settings.highlight(c)) ' is highlighted ' estimateColor(cols(c,:))])
+                end
+            end
+            xlim(settings.axes,obj.epoch);
+            ylim(settings.axes,[0 n])
+            xlabel(settings.axes,'Time (s)')
+            ylabel(settings.axes,['Neuron ranking (by ' obj.current_order ')']);
+            set(settings.axes,'tickdir','out');
+        end
+        % show top n channels with most units on them
+        function n_top = top_channels(obj,n)
+            if nargin < 2 || isempty(n)
+                n = 3;
+            end
+            chans = zeros(1,length(obj.units));
+            for u = 1:length(obj.units)
+                chans(u) = obj.units(u).channel;
+            end
+            n_top = [];
+            for nn = 1:n
+                top = mode(chans);
+                if nargout < 1
+                    disp([9 'Channel ' num2str(top) ' has ' num2str(length(find(chans == top))) ' units']);
+                end
+                n_top = [n_top top];
+                chans(chans == top) = [];
+            end
+        end
+        % return all spike times during specified epoch
+        function all_t = all_spike_times(obj,epoch)
+            if nargin < 2 || isempty(epoch)
+                epoch = obj.epoch;
+            end
+            all_t = [];
+            for u = 1:length(obj.units)
+                these_t = obj.units(u).times(obj.units(u).times >= epoch(1) & obj.units(u).times < epoch(2));
+                if ~isempty(these_t)
+                    all_t = [all_t; these_t];
+                end
+            end
+        end
+        % return all units from specific channel
+        function units = channel_units(obj,chan)
+            picked = zeros(1,length(obj.units));
+            for u = 1:length(obj.units)
+                if obj.units(u).channel == chan
+                    picked(u) = 1;
+                end
+            end
+            units = obj.units(picked == 1);
+        end
+        % SNR ratio of units:
+        function unit_snr(obj)
+            obj.snr = nan(1,length(obj.units));
+            for u = 1:length(obj.units)
+                if size(obj.units(u).waveforms,1) > 2
+                    mnW = mean(obj.units(u).waveforms);
+                    A = max(mnW) - min(mnW);
+                    res = zeros(size(obj.units(u).waveforms));
+                    for tt = 1:size(obj.units(u).waveforms,1)
+                        res(tt,:) = obj.units(u).waveforms(tt,:) - mnW;
+                    end
+                    sd = mean(std(res));
+                    obj.snr(u) = A/(2*sd);
+                end
+            end
+            obj.snr(isinf(obj.snr)) = nan;
+        end
+        % Plot a specific unit from a specific channel:
+        function unit_plot(obj,channel,unit)
+            if nargin < 3 || isempty(unit)
+                unit = 1;
+            end
+            chan_units = obj.units([obj.units.channel] == channel);
+            if isempty(chan_units)
+                disp([9 'No units from channel ' num2str(channel)])
+            else
+                if strcmp(unit,'max')
+                    unit = length(chan_units); % this should always be the most active?
+                end
+                if length(chan_units) < unit
+                    disp([9 'There are only ' num2str(length(chan_units)) ' on channel ' num2str(channel)])
+                else
+                    plot(chan_units(unit).waveforms');
+                end
+            end
+        end
+    end
+    
+end
