@@ -44,6 +44,7 @@ Selected properties:
 | extra     | Structure for storage of extra data not core to the object                     |
 
 Selected methods:
+
 | Method       |                                  Description                                  |
 |-------------:|-------------------------------------------------------------------------------|
 | inspect_unit | Plots an overview of this unit for visual inspection                          |
