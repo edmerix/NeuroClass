@@ -85,7 +85,7 @@ classdef MultipleUnits < handle
             set(settings.axes,'tickdir','out');
         end
         % full raster plot (slow, but color-able)
-        function hdls = beefyraster(obj,varargin)
+        function hdls = beefy_raster(obj,varargin)
             settings.base_color = 'k';
             if isequal(get(0,'DefaultAxesColor'), [0 0 0])
                 settings.base_color = 'w';

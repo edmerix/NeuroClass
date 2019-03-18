@@ -352,7 +352,7 @@ classdef SingleUnit < handle
         end
         
         function [z, dof] = zvals(obj)
-            % Tweaked/borrowed from ultramegasort2000 "get_zvalues.m" by 
+            % Tweaked/borrowed from UltraMegaSort2000 "get_zvalues.m" by 
             % Hill DN, Mehta SB, & Kleinfeld D
             w = obj.waveforms;
             covar = cov(w);

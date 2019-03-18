@@ -8,7 +8,7 @@ __SingleUnit.m__: class to store individual single units, with useful methods to
 
 __MultipleUnits.m__: class to store populations of single units, with methods to assess population firing activities.
 
-_Makes use of [distinguishable_colors.m](https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors) if it's on the path, but isn't necessary.
+_Makes use of [distinguishable_colors.m](https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors) if it's on the path, but isn't necessary._
 
 ## Usage
 
@@ -56,4 +56,26 @@ Selected methods:
 
 ### MultipleUnit object:
 
-Need to export this. Prompt me if you want to know and it's still not here.
+Properties:
+
+| Property |                             Description                            |
+|---------:|:------------------------------------------------------------------:|
+|  patient | Patient identifier (string)                                        |
+|  seizure | Seizure number (int)                                               |
+|    epoch | Start and finish times of epoch [double double]                    |
+|    units | Array of SingleUnit objects                                        |
+|      snr | Stores the signal-to-noise ratio of this recording once calculated |
+|     info | Any extra details and info for this recording                      |
+
+Selected methods _(see [example_usage.m](example_usage.m) for input/output explanations)_:
+
+|           Method |                                                       Description                                                      |
+|-----------------:|:----------------------------------------------------------------------------------------------------------------------:|
+|         add_unit | Add a SingleUnit object to this MultipleUnits object                                                                   |
+|  all_spike_times | Return all spike times across all units within specified epoch (defaults to all)                                       |
+|     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. User .raster() for quick overview.             |
+|    channel_units | Return array of all SingleUnit objects from specified channel.                                                         |
+| order_by_channel | Order the SingleUnits by channel number                                                                                |
+|    order_by_rate | Order the SingleUnits by overall firing rate                                                                           |
+|           raster | Make a basic raster plot of these units. No color-coding, not very pretty - use .beefy_raster() for comprehensive plot |
+|     top_channels | Return the specified number of channels with the most units recorded                                                   |
