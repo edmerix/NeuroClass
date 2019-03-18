@@ -5,6 +5,7 @@ classdef MultipleUnits < handle
         seizure
         epoch
         snr
+        info
     end
     
     properties (SetAccess = private, Hidden = true)
@@ -35,7 +36,7 @@ classdef MultipleUnits < handle
                 unit.UID = length(obj.units) + 1;
             end
             obj.units = [obj.units unit];
-            if min(unit.times) < obj.epoch(1) | max(unit.times) > obj.epoch(2)
+            if ~isempty(unit.times) && (min(unit.times) < obj.epoch(1) || max(unit.times) > obj.epoch(2))
                 disp([9 'Heads up: this unit has spiketimes outside the currently set epoch for this collection']);
             end
             % need to fix the ordering if it's not currently set to none
@@ -69,13 +70,13 @@ classdef MultipleUnits < handle
             for v = 1:2:length(varargin)
                 settings.(varargin{v}) = varargin{v+1};
             end
-            full_t = [];
-            full_y = [];
-            for u = 1:length(obj.units)
-                %TODO: this doesn't need to be a loop. vectorize.
-                full_t = [full_t; obj.units(u).times];
-                full_y = [full_y u*ones(1,length(obj.units(u).times))];
-            end
+            % Very annoying - shoulda done a row vector for the times so we
+            % could just do full_t = [obj.units.times] instead. Might
+            % update:
+            full_t = cell2mat({obj.units.times}');
+            lens = cellfun(@length,{obj.units.times});
+            full_y = repelem(1:length(obj.units),lens);
+
             plot(settings.axes,full_t,full_y,'k.','markersize',6);
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0 length(obj.units)])
@@ -101,8 +102,8 @@ classdef MultipleUnits < handle
             end
             for n = 1:length(obj.units)
                 if length(obj.units(n).times) > 2
-                    if isfield(obj.units(n).extra, 'type') && ~settings.blackout && isempty(settings.highlight)
-                        if strcmp(obj.units(n).extra.type,'pc')
+                    if isfield(obj.units(n), 'type') && ~settings.blackout && isempty(settings.highlight)
+                        if strcmp(obj.units(n).type,'pc')
                             col = settings.base_color;
                         else
                             col = settings.in_color;
@@ -150,13 +151,13 @@ classdef MultipleUnits < handle
             for u = 1:length(obj.units)
                 chans(u) = obj.units(u).channel;
             end
-            n_top = [];
+            n_top = zeros(1,n);
             for nn = 1:n
                 top = mode(chans);
                 if nargout < 1
                     disp([9 'Channel ' num2str(top) ' has ' num2str(length(find(chans == top))) ' units']);
                 end
-                n_top = [n_top top];
+                n_top(nn) = top;
                 chans(chans == top) = [];
             end
         end
@@ -165,13 +166,8 @@ classdef MultipleUnits < handle
             if nargin < 2 || isempty(epoch)
                 epoch = obj.epoch;
             end
-            all_t = [];
-            for u = 1:length(obj.units)
-                these_t = obj.units(u).times(obj.units(u).times >= epoch(1) & obj.units(u).times < epoch(2));
-                if ~isempty(these_t)
-                    all_t = [all_t; these_t];
-                end
-            end
+            all_t = cell2mat({mahal_template.units.times}'); % yup, that's annoying. shoulda used a row vector for times. might update.
+            all_t(all_t < epoch(1) | all_t > epoch(2)) = [];
         end
         % return all units from specific channel
         function units = channel_units(obj,chan)
