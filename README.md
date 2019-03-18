@@ -59,7 +59,7 @@ Selected methods:
 Properties:
 
 | Property |                             Description                            |
-|---------:|:------------------------------------------------------------------:|
+|---------:|--------------------------------------------------------------------|
 |  patient | Patient identifier (string)                                        |
 |  seizure | Seizure number (int)                                               |
 |    epoch | Start and finish times of epoch [double double]                    |
@@ -70,7 +70,7 @@ Properties:
 Selected methods _(see [example_usage.m](example_usage.m) for input/output explanations)_:
 
 |           Method |                                                       Description                                                      |
-|-----------------:|:----------------------------------------------------------------------------------------------------------------------:|
+|-----------------:|------------------------------------------------------------------------------------------------------------------------|
 |         add_unit | Add a SingleUnit object to this MultipleUnits object                                                                   |
 |  all_spike_times | Return all spike times across all units within specified epoch (defaults to all)                                       |
 |     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. User .raster() for quick overview.             |
