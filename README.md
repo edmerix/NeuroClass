@@ -8,8 +8,7 @@ __SingleUnit.m__: class to store individual single units, with useful methods to
 
 __MultipleUnits.m__: class to store populations of single units, with methods to assess population firing activities.
 
-__Dependencies__ (minimal and easily removed): [get_zvalues.m](dependencies/get_zvalues.m) from [UltraMegaSort](https://neurophysics.ucsd.edu/software.php), and [estimateColors.m](dependencies/estimateColor.m), a method of estimating the human name for colors, to simplify interpretation of complex raster plots.
-
+_Makes use of [distinguishable_colors.m](https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors) if it's on the path, but isn't necessary.
 
 ## Usage
 

@@ -325,7 +325,7 @@ classdef SingleUnit < handle
             ylabel('Count')
             title('Autocorrelation')
             % CHI dist
-            [z,dof] = get_zvalues(obj.waveforms,cov(obj.waveforms));
+            [z,dof] = zvals(obj);
             [~,x1] = hist(z,100);
             ax(4) = axes('position',[0.05 0.04 0.4 0.42]);
             hist(z,100)
@@ -348,6 +348,29 @@ classdef SingleUnit < handle
                 for a = 1:length(ax)
                     cleanupfig(ax(a),'grid','smallfont');
                 end
+            end
+        end
+        
+        function [z, dof] = zvals(obj)
+            % Tweaked/borrowed from ultramegasort2000 "get_zvalues.m" by 
+            % Hill DN, Mehta SB, & Kleinfeld D
+            w = obj.waveforms;
+            covar = cov(w);
+            dof = round(rank(covar)/2);
+            num_dims = size(w(:,:),2);
+            num_spikes = size(w,1);    
+            last = (1:dof) + num_dims  - dof;    
+            [v,d] = eig(covar);            % get PCs
+            for j = 1:num_dims, v(:,j) = v(:,j); end
+            v = v(:,last);                 % use last r dimensions
+            w = detrend(w,'constant');     % mean subtract
+            w = (w*v);                     % project on to PCs
+
+            % get Mahalanobis distance
+            z = zeros([1 num_spikes]);
+            dinv = inv(d(last,last));
+            for j = 1:num_spikes
+                z(j) = w(j,:)*dinv*w(j,:)';
             end
         end
     end

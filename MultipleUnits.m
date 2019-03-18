@@ -112,7 +112,11 @@ classdef MultipleUnits < handle
                         if isempty(settings.highlight)
                             col = settings.base_color;
                         else
-                            cols = lines(length(settings.highlight));
+                            if exist('distinguishable_colors','file')
+                                cols = distinguishable_colors(length(settings.highlight));
+                            else
+                                cols = lines(length(settings.highlight));
+                            end
                             highlighting = find(settings.highlight == obj.units(n).channel);
                             if highlighting > 0
                                 col = cols(highlighting,:);
@@ -131,11 +135,7 @@ classdef MultipleUnits < handle
             if min(obj.epoch) < 0 && max(obj.epoch) > 0
                 line(settings.axes,[0 0],[0 n],'color','r')
             end
-            if ~isempty(settings.highlight)
-                for c = 1:length(cols)
-                    disp([9 num2str(settings.highlight(c)) ' is highlighted ' estimateColor(cols(c,:))])
-                end
-            end
+            
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0 n])
             xlabel(settings.axes,'Time (s)')
