@@ -166,7 +166,14 @@ classdef MultipleUnits < handle
             if nargin < 2 || isempty(epoch)
                 epoch = obj.epoch;
             end
-            all_t = cell2mat({obj.units.times}'); % yup, that's annoying. shoulda used a row vector for times. might update.
+            if isrow(obj.units(1).times)
+                all_t = cell2mat([obj.units.times]);
+            else
+                % yup, that's annoying. shoulda used a row vector for times. might update.
+                all_t = {obj.units.times};
+                all_t(cellfun(@isempty,all_t)) = [];
+                all_t = cell2mat(all_t');
+            end
             all_t(all_t < epoch(1) | all_t > epoch(2)) = [];
         end
         % return all units from specific channel
