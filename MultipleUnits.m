@@ -1,11 +1,11 @@
 classdef MultipleUnits < handle
     properties
-        units
-        patient
-        seizure
-        epoch
-        snr
-        info
+        units       SingleUnit
+        patient     string
+        seizure     single
+        epoch       double
+        snr         double
+        info        string
     end
     
     properties (SetAccess = private, Hidden = true)
@@ -73,7 +73,7 @@ classdef MultipleUnits < handle
             % Very annoying - shoulda done a row vector for the times so we
             % could just do full_t = [obj.units.times] instead. Might
             % update:
-            full_t = cell2mat({obj.units.times}');
+            full_t = obj.all_spike_times();
             lens = cellfun(@length,{obj.units.times});
             full_y = repelem(1:length(obj.units),lens);
 
@@ -166,7 +166,7 @@ classdef MultipleUnits < handle
             if nargin < 2 || isempty(epoch)
                 epoch = obj.epoch;
             end
-            if isrow(obj.units(1).times)
+            if length(obj.units(1).times) > 1 && isrow(obj.units(1).times)
                 all_t = cell2mat([obj.units.times]);
             else
                 % yup, that's annoying. shoulda used a row vector for times. might update.

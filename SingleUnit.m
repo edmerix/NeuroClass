@@ -1,14 +1,15 @@
 classdef SingleUnit < handle
     properties
-        UID
-        waveforms
-        times
-        channel
-        patient
-        seizure
-        epoch
-        wideband
-        type
+        UID         (1,1)   single
+        waveforms           double
+        times       (:,1)   double
+        channel     (1,1)   single
+        patient             string
+        seizure     (1,1)   single
+        epoch       (1,2)   double = [-Inf Inf]
+        wideband    (1,:)   double
+        type                string
+        threshold           double
         extra % used to assign anything extra by the user
     end
     
@@ -61,7 +62,7 @@ classdef SingleUnit < handle
             w = gausswin(100);
             w = w-min(w); % ensure zero firing = 0
             %w = w/max(w);
-            w = w/sum(w); % turn into a probability
+            w = w/sum(w); % turn into a probability window of when this spike happened
 
             if nargin > 2 && ~isempty(forced_timings)
                 fr = zeros(ceil(max(forced_timings)*G_Fs),1);
