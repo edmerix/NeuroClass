@@ -1,6 +1,6 @@
 classdef SingleUnit < handle
     properties
-        UID         (1,1)   single
+        UID                 single
         waveforms           double
         times       (:,1)   double
         channel     (1,1)   single

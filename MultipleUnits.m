@@ -70,16 +70,33 @@ classdef MultipleUnits < handle
             for v = 1:2:length(varargin)
                 settings.(varargin{v}) = varargin{v+1};
             end
-            % Very annoying - shoulda done a row vector for the times so we
-            % could just do full_t = [obj.units.times] instead. Might
-            % update:
-            full_t = obj.all_spike_times();
-            lens = cellfun(@length,{obj.units.times});
-            full_y = repelem(1:length(obj.units),lens);
+            % Based on plotSpikeRaster by Jeffrey Chiou:
+            nTotalSpikes = 3 * length(obj.all_spike_times);
+        
+            % We can make it a continuous plot by separating segments with NaNs
+            xPoints = NaN(nTotalSpikes*3,1);
+            yPoints = xPoints;
+            currentInd = 1;
+        
+            for u = 1:length(obj.units)
+                nSpikes = length(obj.units(u).times);
+                nanSeparator = NaN(1,nSpikes);
+                
+                trialXPoints = [ obj.units(u).times'; obj.units(u).times'; nanSeparator ];
+                trialXPoints = trialXPoints(:);
+                
+                trialYPoints = [ (u-0.5)*ones(1,nSpikes); (u+0.5)*ones(1,nSpikes); nanSeparator ];
+                trialYPoints = trialYPoints(:);
+                
+                % Save points and update current index
+                xPoints(currentInd:currentInd+nSpikes*3-1) = trialXPoints;
+                yPoints(currentInd:currentInd+nSpikes*3-1) = trialYPoints;
+                currentInd = currentInd + nSpikes*3;
+            end
 
-            plot(settings.axes,full_t,full_y,'k.','markersize',6);
+            plot(settings.axes,xPoints,yPoints,'k');
             xlim(settings.axes,obj.epoch);
-            ylim(settings.axes,[0 length(obj.units)])
+            ylim(settings.axes,[0.5 length(obj.units)+0.5])
             xlabel(settings.axes,'Time (s)')
             ylabel(settings.axes,['Neuron ranking (by ' obj.current_order ')']);
             set(settings.axes,'tickdir','out');
