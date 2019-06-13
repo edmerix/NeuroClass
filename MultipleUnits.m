@@ -119,7 +119,7 @@ classdef MultipleUnits < handle
             end
             for n = 1:length(obj.units)
                 if length(obj.units(n).times) > 2
-                    if isfield(obj.units(n), 'type') && ~settings.blackout && isempty(settings.highlight)
+                    if any(strcmp(properties(obj.units(n)), 'type')) && ~settings.blackout && isempty(settings.highlight)
                         if strcmp(obj.units(n).type,'pc')
                             col = settings.base_color;
                         else
