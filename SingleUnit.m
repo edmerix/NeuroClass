@@ -35,11 +35,11 @@ classdef SingleUnit < handle
                 end
             end
             if ~isempty(obj.times)
-                obj.times = obj.times(:); % make sure it's a row vector
+                obj.times = obj.times(:)'; % make sure it's a column vector
             end
         end
         % create the firing rate estimate
-        function gaussian_fr(obj,win,forced_timings)
+        function gaussian_fr(obj,win,forced_timings,matchScaling)
             % N.B. This is a convolution... but we're working with point
             % processes in a digital world. This way is more accurate than
             % binning and then using MatLab's 'conv' function. I'm sure
@@ -56,6 +56,9 @@ classdef SingleUnit < handle
                 offset = floor(min(obj.times));
             end
             times_in = obj.times - offset;
+            if nargin < 4 || isempty(matchScaling)
+                matchScaling = false;
+            end
             
             G_Fs = 100/win;
             
@@ -72,7 +75,11 @@ classdef SingleUnit < handle
             for t = 1:length(times_in)
                 tp = round(times_in(t)*G_Fs);
                 if tp > 49 && tp+50 <= length(fr)
-                    fr(tp+(-49:50)) = fr(tp+(-49:50)) + w;
+                    waveAddition = w;
+                    if matchScaling
+                        waveAddition = w .* obj.extra.match_confidence(t);
+                    end
+                    fr(tp+(-49:50)) = fr(tp+(-49:50)) + waveAddition;
                 end
             end
             tt = ((1:length(fr))/G_Fs)+offset;
