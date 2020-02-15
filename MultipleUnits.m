@@ -7,11 +7,11 @@ classdef MultipleUnits < handle
         snr         double
         info        string
     end
-    
+
     properties (SetAccess = private, Hidden = true)
         current_order = 'none';
     end
-    
+
     methods
         % constructor
         function obj = MultipleUnits(varargin)
@@ -69,6 +69,8 @@ classdef MultipleUnits < handle
             settings.axes = gca;
             settings.showtypes = false;
             settings.in_color = [0.64 0.08 0.18];
+            settings.in_maybe_color = [1 0.41 0.16];
+            settings.linewidth = 1;
             for v = 1:2:length(varargin)
                 settings.(varargin{v}) = varargin{v+1};
             end
@@ -76,19 +78,25 @@ classdef MultipleUnits < handle
                 if length(obj.units(end).times) > 1 && isrow(obj.units(end).times)
                     nIN = length(cell2mat([obj.units(strcmpi([obj.units.type],'in')).times]));
                     nPC = length(cell2mat([obj.units(strcmpi([obj.units.type],'pc')).times]));
+                    nINmaybe = length(cell2mat([obj.units(strcmpi([obj.units.type],'in?')).times]));
                 else
                     nIN = length(cell2mat({obj.units(strcmpi([obj.units.type],'in')).times}'));
                     nPC = length(cell2mat({obj.units(strcmpi([obj.units.type],'pc')).times}'));
-                end                
-                
+                    nINmaybe = length(cell2mat({obj.units(strcmpi([obj.units.type],'in?')).times}'));
+                end
+
                 nTotalSpikesIN = 3 * nIN;
                 nTotalSpikesPC = 3 * nPC;
+                nTotalSpikesINmaybe = 3 * nINmaybe;
                 xPointsIN = NaN(nTotalSpikesIN*3,1);
                 yPointsIN = xPointsIN;
                 xPointsPC = NaN(nTotalSpikesPC*3,1);
                 yPointsPC = xPointsPC;
+                xPointsINmaybe = NaN(nTotalSpikesINmaybe*3,1);
+                yPointsINmaybe = xPointsINmaybe;
                 currentIndIN = 1;
                 currentIndPC = 1;
+                currentIndINmaybe = 1;
             else
                 % Based on plotSpikeRaster by Jeffrey Chiou:
                 nTotalSpikes = 3 * length(obj.all_spike_times);
@@ -98,7 +106,7 @@ classdef MultipleUnits < handle
                 yPoints = xPoints;
                 currentInd = 1;
             end
-            
+
             for u = 1:length(obj.units)
                 nSpikes = length(obj.units(u).times);
                 nanSeparator = NaN(1,nSpikes);
@@ -115,6 +123,10 @@ classdef MultipleUnits < handle
                         xPointsIN(currentIndIN:currentIndIN+nSpikes*3-1) = trialXPoints;
                         yPointsIN(currentIndIN:currentIndIN+nSpikes*3-1) = trialYPoints;
                         currentIndIN = currentIndIN + nSpikes*3;
+                    elseif strcmpi(obj.units(u).type,'in?')
+                        xPointsINmaybe(currentIndINmaybe:currentIndINmaybe+nSpikes*3-1) = trialXPoints;
+                        yPointsINmaybe(currentIndINmaybe:currentIndINmaybe+nSpikes*3-1) = trialYPoints;
+                        currentIndINmaybe = currentIndINmaybe + nSpikes*3;
                     else
                         xPointsPC(currentIndPC:currentIndPC+nSpikes*3-1) = trialXPoints;
                         yPointsPC(currentIndPC:currentIndPC+nSpikes*3-1) = trialYPoints;
@@ -127,11 +139,12 @@ classdef MultipleUnits < handle
                 end
             end
             if settings.showtypes
-                plot(settings.axes,xPointsPC,yPointsPC,'k');
+                plot(settings.axes,xPointsPC,yPointsPC,'k','linewidth',settings.linewidth);
                 hold(settings.axes,'on')
-                plot(settings.axes,xPointsIN,yPointsIN,'color',settings.in_color);
+                plot(settings.axes,xPointsIN,yPointsIN,'color',settings.in_color,'linewidth',settings.linewidth);
+                plot(settings.axes,xPointsINmaybe,yPointsINmaybe,'color',settings.in_maybe_color,'linewidth',settings.linewidth);
             else
-                plot(settings.axes,xPoints,yPoints,'k');
+                plot(settings.axes,xPoints,yPoints,'k','linewidth',settings.linewidth);
             end
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0.5 length(obj.units)+0.5])
@@ -191,14 +204,100 @@ classdef MultipleUnits < handle
             if min(obj.epoch) < 0 && max(obj.epoch) > 0
                 line(settings.axes,[0 0],[0 n],'color','r')
             end
-            
+
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0 n])
             xlabel(settings.axes,'Time (s)')
             ylabel(settings.axes,['Neuron ranking (by ' obj.current_order ')']);
             set(settings.axes,'tickdir','out');
         end
-        % show top n channels with most units on them
+        % plot all waveforms from each unit on one channel (3D separation)
+        function plot_channel_units(obj,chan,darkmode)
+            if nargin < 2 || isempty(chan)
+                error('Need a channel number to plot units from')
+            end
+            if nargin < 3 || isempty(darkmode)
+                darkmode = true;
+            end
+
+            these_units = obj.channel_units(chan);
+
+            bgcol = [1 1 1];
+            if darkmode
+                bgcol = [0.1412 0.1529 0.1804];
+            end
+
+            if exist('distinguishable_colors','file')
+                cols = distinguishable_colors(length(these_units),bgcol);
+            else
+                cols = lines(length(these_units));
+            end
+
+            hfig = figure('Position',[rand(1,1)*200+100 rand(1,1)*200+50 1200 500]);
+            ax(1) = axes('Position',[0.05 0.05 0.4 0.9]);
+            ax(2) = axes('Position',[0.55 0.05 0.4 0.9]);
+            hold(ax(1),'all')
+            hold(ax(2),'all')
+            ledge = cell(1,length(these_units));
+            assigns = nan(1,length(cell2mat({these_units.times}')));
+            assign_offset = 0;
+            for u = 1:length(these_units)
+                t = -.6:1/30:((size(these_units(u).waveforms,2)-1)/30)-.6;
+                zt = ones(size(these_units(u).waveforms)).*these_units(u).times;
+                if isinf(max(abs(obj.epoch)))
+                    warning('Epoch for this dataset does not appear to have been set, which will cause issues with data plotting in plot_channel_units')
+                end
+                zt = zt - obj.epoch(1);
+                zt = zt / diff(obj.epoch);
+                zt = zt + u;
+                % "Jittering" the color code makes them easier to see, but
+                % also makes it slower to plot (single waveform at a time)
+                for w = 1:size(these_units(u).waveforms,1)
+                    plot3(ax(1),t,zt(w,:),these_units(u).waveforms(w,:),...
+                        'color',obj.jitter_color(cols(u,:),0.4));
+                end
+                ledge{u} = ['UID ' num2str(these_units(u).UID)];
+                assigns((1:length(these_units(u).times))+assign_offset) = ones(1,length(these_units(u).times)) * these_units(u).UID;
+                assign_offset = assign_offset + length(these_units(u).times);
+            end
+            tt = title(ax(1),['All units from channel ' num2str(chan)]);
+            tt.FontSize = 13;
+            xlim(ax(1),[-0.6 1])
+            set(ax(1),'box','off','tickdir','out','ticklength',[0.005 0.005],...
+                'linewidth',1.5,'FontSize',14,'color','none','FontName','Helvetica Neue',...
+                'xcolor','k','ycolor','k','XGrid','on','YGrid','on','ZGrid','on',...
+                'YTick',1:length(these_units),'YTickLabel',ledge)
+            xlabel(ax(1),'Time (ms)')
+            ylabel(ax(1),'Unit number')
+            zlabel(ax(1),'Voltage (\muV)')
+            view(ax(1),3)
+
+            full_waves = cell2mat({these_units.waveforms}');
+            [~,pc] = pca(full_waves);
+            unq_assigns = unique(assigns,'stable');
+            for u = 1:length(unq_assigns)
+                plot3(ax(2),pc(assigns == unq_assigns(u),1),pc(assigns == unq_assigns(u),2),pc(assigns == unq_assigns(u),3),'.','color',cols(u,:))
+            end
+            set(ax(2),'box','on','tickdir','out','ticklength',[0.005 0.005],...
+                'linewidth',1.5,'FontSize',14,'color','none','FontName','Helvetica Neue',...
+                'xcolor','k','ycolor','k','XGrid','on','YGrid','on','ZGrid','on')
+            lg = legend(ax(2),ledge);
+            xlabel(ax(2),'PC 1 score')
+            ylabel(ax(2),'PC 2 score')
+            zlabel(ax(2),'PC 3 score')
+            view(ax(2),3)
+            if darkmode
+                hfig.Color = bgcol;
+                for a = 1:2
+                    set(ax(a),'XColor',[0.6 0.6 0.6],'YColor',[0.6 0.6 0.6],'ZColor',[0.6 0.6 0.6]);
+                end
+                lg.Color = 'none';
+                lg.TextColor = [0.6 0.6 0.6];
+                tt.Color = [0.6 0.6 0.6];
+            end
+        end
+        % show top n channels with most units on them (by channel number,
+        % not electrode label. Use top_electrodes for electrode label)
         function n_top = top_channels(obj,n,dropNaN)
             if nargin < 2 || isempty(n)
                 n = 3;
@@ -223,6 +322,30 @@ classdef MultipleUnits < handle
                 n_top = n_top(~isnan(n_top));
             end
         end
+        % show top n electrodes with most units on them (by electrode
+        % label, not channel number. Use top_channels for channel number)
+        function n_top = top_electrodes(obj,n)
+            if nargin < 2 || isempty(n)
+                n = 3;
+            end
+            chans = cell(1,length(obj.units));
+            for u = 1:length(obj.units)
+                chans{u} = obj.units(u).electrodelabel;
+            end
+            [unq_chans,~,which_chan] = unique(chans);
+            n_top = cell(1,n);
+            for nn = 1:n
+                topCh = mode(which_chan);
+                top = unq_chans{topCh};
+                if nargout < 1
+                    disp([9 'Electrode ' top ' has ' num2str(length(find(which_chan == topCh))) ' units']);
+                end
+                n_top{nn} = top;
+                which_chan(which_chan == topCh) = [];
+                which_chan(which_chan > topCh) = which_chan(which_chan > topCh) - 1;
+                unq_chans(topCh) = [];
+            end
+        end
         % return all spike times during specified epoch
         function all_t = all_spike_times(obj,epoch)
             if nargin < 2 || isempty(epoch)
@@ -241,7 +364,8 @@ classdef MultipleUnits < handle
         function units = channel_units(obj,chan)
             picked = zeros(1,length(obj.units));
             for u = 1:length(obj.units)
-                if obj.units(u).channel == chan
+                if (ischar(chan) && strcmpi(obj.units(u).electrodelabel, chan)) || ...
+                    (isnumeric(chan) && obj.units(u).channel == chan)
                     picked(u) = 1;
                 end
             end
@@ -284,5 +408,42 @@ classdef MultipleUnits < handle
             end
         end
     end
-    
+
+    methods (Static = true)
+        function colorcode = jitter_color(colorcode,amt)
+            if nargin < 1 || isempty(colorcode) || length(colorcode) ~= 3
+                error('Must supply a color code in matlab format (1 x 3, 0-1 range)')
+            end
+
+            if nargin < 2 || isempty(amt)
+                amt = 1/3;
+            end
+
+            transposed = false;
+
+            if iscolumn(colorcode)
+                colorcode = colorcode';
+                transposed = true;
+            end
+            for a = 1:3
+                jitter = rand(1,1);
+                if colorcode(:,a) == 1
+                    jitter = -jitter * amt;
+                elseif colorcode(:,a) == 0
+                    jitter = jitter * amt;
+                else
+                    jitter = (jitter-0.5) * amt;
+                end
+                colorcode(:,a) = colorcode(:,a)+jitter;
+            end
+
+            colorcode(colorcode > 1) = 1;
+            colorcode(colorcode < 0) = 0;
+
+            if transposed
+                colorcode = colorcode';
+            end
+        end
+    end
+
 end

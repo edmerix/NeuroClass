@@ -3,23 +3,25 @@ classdef SingleUnit < handle
         UID                 single
         waveforms           double
         times       (:,1)   double
-        channel     (1,1)   single
-        patient             string
+        channel             single
+        electrodelabel      char
+        patient             char
         seizure     (1,1)   single
         epoch       (1,2)   double = [-Inf Inf]
         wideband    (1,:)   double
-        type                string
+        type                char
+        typeprob    (:,1)   single
         threshold           double
         extra % used to assign anything extra by the user
     end
-    
+
     properties (SetAccess = private, Hidden = true)
         gaussian_estimate
         autocorr_data
         isi
         isi_bins
     end
-    
+
     methods
         % constructor
         function obj = SingleUnit(varargin)
@@ -59,9 +61,9 @@ classdef SingleUnit < handle
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
             end
-            
+
             G_Fs = 100/win;
-            
+
             w = gausswin(100);
             w = w-min(w); % ensure zero firing = 0
             %w = w/max(w);
@@ -83,7 +85,7 @@ classdef SingleUnit < handle
                 end
             end
             tt = ((1:length(fr))/G_Fs)+offset;
-            
+
             gInfo.rate = fr;
             gInfo.time = tt;
             gInfo.window = win;
@@ -161,10 +163,11 @@ classdef SingleUnit < handle
                 error('Need an input bin width/vector of bins');
             end
             if isscalar(bins)
-                bins = min(obj.times)+(bins/2):bins:max(obj.times)-(bins/2);
+                bins = min(obj.times):bins:max(obj.times);
             end
-%             binW = bins(2)-bins(1);
-            [fr,bins] = hist(obj.times,bins);
+            d = diff(bins)/2;
+            edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
+            fr = histcounts(obj.times,edges);
         end
         % calculate autocorrelation
         function obj = autocorr(obj,bins,t_subset)
@@ -181,6 +184,8 @@ classdef SingleUnit < handle
                 sub_times = obj.times;
             end
             bins = bins/1000; % temporarily work in seconds (easier to change bins than all times)
+            d = diff(bins)/2;
+            edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
             maxLag = max(bins);
             minLag = min(bins);
             result = zeros(length(sub_times),length(bins));
@@ -188,7 +193,7 @@ classdef SingleUnit < handle
                 adj_times = setdiff(sub_times,sub_times(t));
                 subset = adj_times(adj_times >= sub_times(t)+minLag & adj_times <= sub_times(t)+maxLag);
                 subset = subset - sub_times(t);
-                result(t,:) = hist(subset,bins);
+                result(t,:) = histcounts(subset,edges);
             end
             ac_data.xc = sum(result);
             ac_data.lags = bins*1000; % put back to milliseconds
@@ -288,6 +293,8 @@ classdef SingleUnit < handle
             % AUTOCORR:
             bins = -100:1:100;
             bins = bins/1000; % temporarily work in seconds (easier to change bins than all times)
+            d = diff(bins)/2;
+            edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
             maxLag = max(bins);
             minLag = min(bins);
             result = zeros(length(obj.times),length(bins));
@@ -295,7 +302,7 @@ classdef SingleUnit < handle
                 adj_times = setdiff(obj.times,obj.times(t));
                 subset = adj_times(adj_times >= obj.times(t)+minLag & adj_times <= obj.times(t)+maxLag);
                 subset = subset - obj.times(t);
-                result(t,:) = hist(subset,bins);
+                result(t,:) = histcounts(subset,edges);
             end
             xc = sum(result);
             lags = bins*1000;
@@ -358,16 +365,16 @@ classdef SingleUnit < handle
                 end
             end
         end
-        
+
         function [z, dof] = zvals(obj)
-            % Tweaked/borrowed from UltraMegaSort2000 "get_zvalues.m" by 
+            % Tweaked/borrowed from UltraMegaSort2000 "get_zvalues.m" by
             % Hill DN, Mehta SB, & Kleinfeld D
             w = obj.waveforms;
             covar = cov(w);
             dof = round(rank(covar)/2);
             num_dims = size(w(:,:),2);
-            num_spikes = size(w,1);    
-            last = (1:dof) + num_dims  - dof;    
+            num_spikes = size(w,1);
+            last = (1:dof) + num_dims  - dof;
             [v,d] = eig(covar);            % get PCs
             for j = 1:num_dims, v(:,j) = v(:,j); end
             v = v(:,last);                 % use last r dimensions
