@@ -6,6 +6,7 @@ classdef MultipleUnits < handle
         epoch       double
         snr         double
         info        string
+	display     struct
     end
 
     properties (SetAccess = private, Hidden = true)
@@ -15,6 +16,13 @@ classdef MultipleUnits < handle
     methods
         % constructor
         function obj = MultipleUnits(varargin)
+	    % Basic display options:
+            obj.display.light.bg = [1 1 1];
+            obj.display.light.fg = [0.2 0.2 0.2];
+            obj.display.dark.bg = [0.1412 0.1529 0.1804];
+            obj.display.dark.fg = [0.7 0.7 0.7];
+            obj.display.darkmode = true;
+
             allowable = fieldnames(obj);
             if mod(length(varargin),2) ~= 0
                 error('Inputs must be in name, value pairs');
