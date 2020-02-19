@@ -181,11 +181,14 @@ classdef MultipleUnits < handle
                         if isempty(settings.highlight)
                             col = settings.base_color;
                         else
+                            %{
                             if exist('distinguishable_colors','file')
                                 cols = distinguishable_colors(length(settings.highlight));
                             else
                                 cols = lines(length(settings.highlight));
                             end
+                            %}
+                            cols = obj.dstngsh_cols(length(settings.highlight));
                             highlighting = find(settings.highlight == obj.units(n).channel);
                             if highlighting > 0
                                 col = cols(highlighting,:);
@@ -226,13 +229,15 @@ classdef MultipleUnits < handle
             if darkmode
                 bgcol = [0.1412 0.1529 0.1804];
             end
-
+            %{
             if exist('distinguishable_colors','file')
                 cols = distinguishable_colors(length(these_units),bgcol);
             else
                 cols = lines(length(these_units));
             end
-
+            %}
+            cols = obj.dstngsh_cols(length(these_units),bgcol);
+            
             hfig = figure('Position',[rand(1,1)*200+100 rand(1,1)*200+50 1200 500]);
             ax(1) = axes('Position',[0.05 0.05 0.4 0.9]);
             ax(2) = axes('Position',[0.55 0.05 0.4 0.9]);
@@ -442,6 +447,35 @@ classdef MultipleUnits < handle
 
             if transposed
                 colorcode = colorcode';
+            end
+        end
+        
+        function cols = dstngsh_cols(n_colors,bg)
+            % a lightweight version of distinguisable_colors by Tim Holy
+            % (https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors)
+            if nargin < 2 || isempty(bg)
+                bg = [1 1 1];
+            end
+
+            x = linspace(0,1,30);
+            [R,G,B] = ndgrid(x,x,x);
+            rgb = [R(:) G(:) B(:)];
+
+            C = makecform('srgb2lab');
+            lab = applycform(rgb,C);
+            bglab = applycform(bg,C);
+
+            mindist2 = inf(size(rgb,1),1);
+
+            cols = zeros(n_colors,3);
+            lastlab = bglab(end,:);   % initialize by making the "previous" color equal to background
+            for i = 1:n_colors
+                dX = bsxfun(@minus,lab,lastlab); % displacement of last from all colors on list
+                dist2 = sum(dX.^2,2);  % square distance
+                mindist2 = min(dist2,mindist2);  % dist2 to closest previously-chosen color
+                [~,index] = max(mindist2);  % find the entry farthest from all previously-chosen colors
+                cols(i,:) = rgb(index,:);  % save for output
+                lastlab = lab(index,:);  % prepare for next iteration
             end
         end
     end
