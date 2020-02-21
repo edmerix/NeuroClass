@@ -7,6 +7,7 @@ classdef MultipleUnits < handle
         snr         double
         info        string
         display     struct
+        extra       struct
     end
 
     properties (SetAccess = private, Hidden = true)
