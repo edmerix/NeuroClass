@@ -76,6 +76,23 @@ classdef MultipleUnits < handle
             obj.units = obj.units(ord);
             obj.current_order = 'channel';
         end
+        % re-order units by user-supplied order of UIDs
+        function order_by_UID(obj,UIDorder)
+            curOrder = [obj.units.UID];
+            if length(UIDorder) ~= length(curOrder)
+                error('User supplied order must be an array the same length as the number of units')
+            end
+            % note, this will be an issue if duplicate UIDs, but that would
+            % be its own issue anyway:
+            if length(unique([UIDorder curOrder])) ~= length(curOrder)
+                error('Supplied UIDs must match the UIDs in the MulipleUnits units.UID field')
+            end
+            [~,userOrder] = sort(UIDorder);
+            [~,myOrder] = sort(curOrder);
+            newWorldOrder(userOrder) = myOrder;
+            obj.units = obj.units(newWorldOrder);
+            obj.current_order = 'user supplied';
+        end
         % simple raster plot (speedy)
         function raster(obj,varargin)
             settings.axes = gca;
