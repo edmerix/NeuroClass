@@ -60,6 +60,7 @@ classdef SingleUnit < handle
                 offset = floor(min(obj.times));
             end
             forced_timings = forced_timings - offset;
+            forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
             
             times_in = obj.times - offset;
             times_in(times_in < forced_timings(1) | times_in > forced_timings(2)) = [];
