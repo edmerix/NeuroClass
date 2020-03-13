@@ -8,8 +8,6 @@ __SingleUnit.m__: class to store individual single units, with useful methods to
 
 __MultipleUnits.m__: class to store populations of single units, with methods to assess population firing activities.
 
-_Makes use of [distinguishable_colors.m](https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors) if it's on the path, but isn't necessary._
-
 ## Usage
 
 A more thorough example of usage, starting from the raw output of UltraMegaSort is in [example_usage.m](example_usage.m).
@@ -48,9 +46,11 @@ Selected methods:
 |-------------:|-------------------------------------------------------------------------------|
 | inspect_unit | Plots an overview of this unit for visual inspection                          |
 | autocorr     | Calculate the autocorrelation for this unit                                   |
+| xcorr        | Calculate the cross-correlation between this and another SingleUnit object    |
 | gaussian_fr  | Estimate the instantaneous firing rate of this unit with a Gaussian kernel    |
 | hist_fr      | Calculate the binned firing rate of this unit                                 |
 | mean_ac_lag  | Calculate the mean lag of this unit's autocorrelation (for subclassification) |
+| ISI          | Calculate the ISI for this unit (autocorrelation is better than raw ISI...)   |
 | plot_*       | Plot the output of various other calculations                                 |
 | retrieve_*   | Return the values of the various other calculations                           |
 
@@ -73,9 +73,12 @@ Selected methods _(see [example_usage.m](example_usage.m) for input/output expla
 |-----------------:|------------------------------------------------------------------------------------------------------------------------|
 |         add_unit | Add a SingleUnit object to this MultipleUnits object                                                                   |
 |  all_spike_times | Return all spike times across all units within specified epoch (defaults to all)                                       |
-|     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. User .raster() for quick overview.             |
+|     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. Not recommeded: User .raster() for speed.      |
 |    channel_units | Return array of all SingleUnit objects from specified channel.                                                         |
+|      gaussian_fr | Calculate the Gaussian estimate of the population firing rate across all units within this MultipleUnits               |
 | order_by_channel | Order the SingleUnits by channel number                                                                                |
 |    order_by_rate | Order the SingleUnits by overall firing rate                                                                           |
+|plot_channel_units| Plot all units from specified channel to assess sepapration accuracy (waveforms and PC space)                          |
 |           raster | Make a basic raster plot of these units. No color-coding, not very pretty - use .beefy_raster() for comprehensive plot |
+|         unit_snr | Calculate the SNR across all units in the object                                                                       |
 |     top_channels | Return the specified number of channels with the most units recorded                                                   |
