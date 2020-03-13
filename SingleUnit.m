@@ -18,6 +18,7 @@ classdef SingleUnit < handle
     properties (SetAccess = private, Hidden = true)
         gaussian_estimate
         autocorr_data
+        xcorr_data
         isi
         isi_bins
     end
@@ -41,11 +42,11 @@ classdef SingleUnit < handle
             end
         end
         % create the firing rate estimate
-        function gaussian_fr(obj,SD,forced_timings,matchScaling)
+        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling)
             % Convolve a Gaussian of supplied SD (in ms, defaults to
             % 200) over the spike times (resolution of 1 ms).
             % Can also supply "forced_timings" which will keep the min and
-            % max bins the same regardless of when the earliest of latest
+            % max bins the same regardless of when the earliest or latest
             % spike occurs for this unit.
             % If "matchScaling" is set to true, then output firing rate 
             % will be scaled by the probability of each spike being a true 
@@ -81,7 +82,8 @@ classdef SingleUnit < handle
             end
             
             fr = conv(ap_times,w,'same');
-            tt = tt/1e3; % back to seconds
+            fr = fr * 1e3;  % back to seconds
+            tt = tt/1e3;    % back to seconds
             tt = tt + offset;
 
             gInfo.rate = fr;
@@ -364,6 +366,37 @@ classdef SingleUnit < handle
             end
         end
 
+        % calculate cross-correlation with another unit
+        function [xc, lags] = xcorr(obj,unit,bins,t_subset)
+            if nargin < 2 || isempty(unit)
+                error('Need a SingleUnit object as the first input to calculate cross-correlation relative to');
+            end
+            if nargin < 3 || isempty(bins)
+                error('Include bins (in ms) over which to calculate the crosscorrelation');
+            end
+            if isscalar(bins)
+                error('Bin input must be literal rather than a bin width so as to know min/max lags');
+            end
+            if nargin > 3 && ~isempty(t_subset)
+                sub_times = obj.times(obj.times > min(t_subset) & obj.times < max(t_subset));
+            else
+                sub_times = obj.times;
+            end
+            bins = bins/1000; % temporarily work in seconds (easier to change bins than all times)
+            d = diff(bins)/2;
+            edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
+            maxLag = max(bins);
+            minLag = min(bins);
+            result = zeros(length(sub_times),length(bins));
+            for t = 1:length(sub_times)
+                subset = unit.times(unit.times >= sub_times(t)+minLag & unit.times <= sub_times(t)+maxLag);
+                subset = subset - sub_times(t);
+                result(t,:) = histcounts(subset,edges);
+            end
+            xc = sum(result);
+            lags = bins*1000; % put back to milliseconds
+        end
+        
         function [z, dof] = zvals(obj)
             % Tweaked/borrowed from UltraMegaSort2000 "get_zvalues.m" by
             % Hill DN, Mehta SB, & Kleinfeld D
