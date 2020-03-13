@@ -84,6 +84,8 @@ Selected methods _(see [example_usage.m](example_usage.m) for input/output expla
 |     top_channels | Return the specified number of channels with the most units recorded                                                   |
 
 
-##Screenshots
+## Screenshots
+
+Example output of the MultipleUnits plot_channel_units(channel) method:
 
 ![Screenshot of plot_channel_units output](Screenshots/ExampleChannelUnits.png?raw=true "plot_channel_units output figure")
