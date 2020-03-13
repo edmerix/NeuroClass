@@ -25,7 +25,7 @@ data.order_by_rate();
 data.raster();
 ```
 
-## Structure overview 
+## Structure overview
 
 ### SingleUnit object:
 
@@ -73,12 +73,17 @@ Selected methods _(see [example_usage.m](example_usage.m) for input/output expla
 |-----------------:|------------------------------------------------------------------------------------------------------------------------|
 |         add_unit | Add a SingleUnit object to this MultipleUnits object                                                                   |
 |  all_spike_times | Return all spike times across all units within specified epoch (defaults to all)                                       |
-|     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. Not recommeded: User .raster() for speed.      |
+|     beefy_raster | Make a comprehensive raster plot of these units, allowing color-coding. Not recommended: User .raster() for speed.     |
 |    channel_units | Return array of all SingleUnit objects from specified channel.                                                         |
 |      gaussian_fr | Calculate the Gaussian estimate of the population firing rate across all units within this MultipleUnits               |
 | order_by_channel | Order the SingleUnits by channel number                                                                                |
 |    order_by_rate | Order the SingleUnits by overall firing rate                                                                           |
-|plot_channel_units| Plot all units from specified channel to assess sepapration accuracy (waveforms and PC space)                          |
+|plot_channel_units| Plot all units from specified channel to assess separation accuracy ([see screenshot below](#screenshots))             |
 |           raster | Make a basic raster plot of these units. No color-coding, not very pretty - use .beefy_raster() for comprehensive plot |
 |         unit_snr | Calculate the SNR across all units in the object                                                                       |
 |     top_channels | Return the specified number of channels with the most units recorded                                                   |
+
+
+##Screenshots
+
+![Screenshot of plot_channel_units output](Screenshots/ExampleChannelUnits.png?raw=true "plot_channel_units output figure")
