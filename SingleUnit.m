@@ -18,6 +18,7 @@ classdef SingleUnit < handle
     properties (SetAccess = private, Hidden = true)
         gaussian_estimate
         autocorr_data
+        xcorr_data
         isi
         isi_bins
     end
@@ -41,54 +42,53 @@ classdef SingleUnit < handle
             end
         end
         % create the firing rate estimate
-        function gaussian_fr(obj,win,forced_timings,matchScaling)
-            % N.B. This is a convolution... but we're working with point
-            % processes in a digital world. This way is more accurate than
-            % binning and then using MatLab's 'conv' function. I'm sure
-            % there's a way of doing it without binning but this is quick
-            % enough.
-            if nargin < 2 || isempty(win)
-                win = 1;
+        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling)
+            % Convolve a Gaussian of supplied SD (in ms, defaults to
+            % 200) over the spike times (resolution of 1 ms).
+            % Can also supply "forced_timings" which will keep the min and
+            % max bins the same regardless of when the earliest or latest
+            % spike occurs for this unit.
+            % If "matchScaling" is set to true, then output firing rate 
+            % will be scaled by the probability of each spike being a true 
+            % match to that unit. Tell Ed to write this better.
+            if nargin < 2 || isempty(SD)
+                SD = 200;
             end
             if nargin > 2 && ~isempty(forced_timings)
                 offset = min(forced_timings);
-                forced_timings = forced_timings - offset;
             else
                 forced_timings = [min(obj.times) max(obj.times)];
                 offset = floor(min(obj.times));
             end
+            forced_timings = forced_timings - offset;
+            forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
+            
             times_in = obj.times - offset;
+            times_in(times_in < forced_timings(1) | times_in > forced_timings(2)) = [];
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
             end
-
-            G_Fs = 100/win;
-
-            w = gausswin(100);
-            w = w-min(w); % ensure zero firing = 0
-            %w = w/max(w);
-            w = w/sum(w); % turn into a probability window of when this spike happened
-
-            if nargin > 2 && ~isempty(forced_timings)
-                fr = zeros(ceil(max(forced_timings)*G_Fs),1);
+            
+            gaussSize = [1 1000]; % size of Gaussian window
+            w = fspecial('gaussian',gaussSize,SD);
+            
+            tt = forced_timings(1)*1e3:forced_timings(2)*1e3;
+            ap_times = zeros(size(tt));
+            times_in = round(times_in*1e3); % use milliseconds
+            if matchScaling
+                ap_times(times_in) = obj.extra.match_confidence;
             else
-                fr = zeros(ceil(ceil(max(times_in))*G_Fs),1);
+                ap_times(times_in) = 1;
             end
-            for t = 1:length(times_in)
-                tp = round(times_in(t)*G_Fs);
-                if tp > 49 && tp+50 <= length(fr)
-                    waveAddition = w;
-                    if matchScaling
-                        waveAddition = w .* obj.extra.match_confidence(t);
-                    end
-                    fr(tp+(-49:50)) = fr(tp+(-49:50)) + waveAddition;
-                end
-            end
-            tt = ((1:length(fr))/G_Fs)+offset;
+            
+            fr = conv(ap_times,w,'same');
+            fr = fr * 1e3;  % back to seconds
+            tt = tt/1e3;    % back to seconds
+            tt = tt + offset;
 
             gInfo.rate = fr;
             gInfo.time = tt;
-            gInfo.window = win;
+            gInfo.SD = SD;
             gInfo.forced_t = forced_timings + offset;
             obj.gaussian_estimate = gInfo;
         end
@@ -366,6 +366,37 @@ classdef SingleUnit < handle
             end
         end
 
+        % calculate cross-correlation with another unit
+        function [xc, lags] = xcorr(obj,unit,bins,t_subset)
+            if nargin < 2 || isempty(unit)
+                error('Need a SingleUnit object as the first input to calculate cross-correlation relative to');
+            end
+            if nargin < 3 || isempty(bins)
+                error('Include bins (in ms) over which to calculate the crosscorrelation');
+            end
+            if isscalar(bins)
+                error('Bin input must be literal rather than a bin width so as to know min/max lags');
+            end
+            if nargin > 3 && ~isempty(t_subset)
+                sub_times = obj.times(obj.times > min(t_subset) & obj.times < max(t_subset));
+            else
+                sub_times = obj.times;
+            end
+            bins = bins/1000; % temporarily work in seconds (easier to change bins than all times)
+            d = diff(bins)/2;
+            edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
+            maxLag = max(bins);
+            minLag = min(bins);
+            result = zeros(length(sub_times),length(bins));
+            for t = 1:length(sub_times)
+                subset = unit.times(unit.times >= sub_times(t)+minLag & unit.times <= sub_times(t)+maxLag);
+                subset = subset - sub_times(t);
+                result(t,:) = histcounts(subset,edges);
+            end
+            xc = sum(result);
+            lags = bins*1000; % put back to milliseconds
+        end
+        
         function [z, dof] = zvals(obj)
             % Tweaked/borrowed from UltraMegaSort2000 "get_zvalues.m" by
             % Hill DN, Mehta SB, & Kleinfeld D

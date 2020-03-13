@@ -6,6 +6,7 @@ classdef MultipleUnits < handle
         epoch       double
         snr         double
         info        string
+        extra       struct
     end
 
     properties (SetAccess = private, Hidden = true)
@@ -85,6 +86,7 @@ classdef MultipleUnits < handle
         function raster(obj,varargin)
             settings.axes = gca;
             settings.showtypes = false;
+            settings.base_color = [0 0 0];
             settings.in_color = [0.64 0.08 0.18];
             settings.in_maybe_color = [1 0.41 0.16];
             settings.linewidth = 1;
@@ -156,12 +158,12 @@ classdef MultipleUnits < handle
                 end
             end
             if settings.showtypes
-                plot(settings.axes,xPointsPC,yPointsPC,'k','linewidth',settings.linewidth);
+                plot(settings.axes,xPointsPC,yPointsPC,'color',settings.base_color,'linewidth',settings.linewidth);
                 hold(settings.axes,'on')
                 plot(settings.axes,xPointsIN,yPointsIN,'color',settings.in_color,'linewidth',settings.linewidth);
                 plot(settings.axes,xPointsINmaybe,yPointsINmaybe,'color',settings.in_maybe_color,'linewidth',settings.linewidth);
             else
-                plot(settings.axes,xPoints,yPoints,'k','linewidth',settings.linewidth);
+                plot(settings.axes,xPoints,yPoints,'color',settings.base_color,'linewidth',settings.linewidth);
             end
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0.5 length(obj.units)+0.5])
@@ -428,6 +430,48 @@ classdef MultipleUnits < handle
                     plot(chan_units(unit).waveforms');
                 end
             end
+        end
+        % Get gaussian estimate of firing across population:
+        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling)
+            if nargin < 2 || isempty(SD)
+                SD = 200;
+            end
+            if nargin < 3 || isempty(forced_timings)
+                full_t = obj.all_spike_times();
+                forced_timings = [floor(min(full_t)) ceil(max(full_t))];
+            end
+            if nargin < 4 || isempty(matchScaling)
+                matchScaling = false;
+            end
+            
+            offset = min(forced_timings);
+            adjusted_timings = forced_timings - offset;
+            adjusted_timings = [floor(adjusted_timings(1)) ceil(adjusted_timings(2))];
+            
+            tt = (adjusted_timings(1)*1e3:adjusted_timings(2)*1e3);
+            full_fr = zeros(length(obj.units),length(tt));
+            
+            if verLessThan('matlab', '8.0.1')
+                x = get(0,'CommandWindowSize');
+            else
+                x = matlab.desktop.commandwindow.size;
+            end
+            tot = x(1)-1;
+            disp(['Calculating Gaussian estimate of firing rate across ' num2str(length(obj.units)) ' units'])
+            disp([9 '(using a bin width of ' num2str(SD) ' ms, from ' num2str(forced_timings(1)) ' to ' num2str(forced_timings(2)) ' seconds)'])
+            prntd = 0;
+            for u = 1:length(obj.units)
+                full_fr(u,:) = obj.units(u).gaussian_fr(SD,forced_timings,matchScaling);
+                prc = (u/length(obj.units)) * tot;
+                if floor(prc) > prntd
+                    fprintf('|');
+                    prntd = prntd + 1;
+                end
+            end
+            fprintf('\n');
+            tt = tt / 1e3; % back to seconds
+            tt = tt + offset;
+            fr = sum(full_fr);
         end
     end
 
