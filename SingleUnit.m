@@ -170,7 +170,7 @@ classdef SingleUnit < handle
             fr = histcounts(obj.times,edges);
         end
         % calculate autocorrelation
-        function obj = autocorr(obj,bins,t_subset)
+        function [ac,lags] = autocorr(obj,bins,t_subset)
             if nargin < 2 || isempty(bins)
                 error('Include bins (in ms) over which to calculate the autocorrelation');
             end
@@ -199,6 +199,8 @@ classdef SingleUnit < handle
             ac_data.lags = bins*1000; % put back to milliseconds
             ac_data.time_subset = t_subset;
             obj.autocorr_data = ac_data;
+            ac = ac_data.xc;
+            lags = ac_data.lags;
         end
         % plot autocorrelation
         function plot_ac(obj)
@@ -309,7 +311,7 @@ classdef SingleUnit < handle
             % Figure
             figure('units','normalized','position',[0.02 0.02 0.96 0.96]);
             ax(1) = axes('position',[0.035 0.55 0.35 0.4]);
-            t = -.6:1/30:((length(obj.waveforms(1,:))-1)/30)-.6;
+            t = -0.6:1/30:((length(obj.waveforms(1,:))-1)/30)-0.6;
             zt = ones(size(obj.waveforms)).*obj.times;
             plot3(ax(1),t,zt,obj.waveforms)
             view(ax(1),[0 1])
