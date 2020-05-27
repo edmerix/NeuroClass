@@ -357,6 +357,7 @@ classdef MultipleUnits < handle
                 chans{u} = obj.units(u).electrodelabel;
             end
             [unq_chans,~,which_chan] = unique(chans);
+            n = min(n,length(unq_chans));
             n_top = cell(1,n);
             for nn = 1:n
                 topCh = mode(which_chan);
@@ -472,6 +473,10 @@ classdef MultipleUnits < handle
             tt = tt / 1e3; % back to seconds
             tt = tt + offset;
             fr = sum(full_fr);
+        end
+        % Return the unit with a specific UID
+        function unit = get_unit(obj,UID)
+            unit = obj.units([obj.units.UID] == UID);
         end
     end
 
