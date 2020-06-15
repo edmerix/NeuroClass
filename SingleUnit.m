@@ -64,7 +64,8 @@ classdef SingleUnit < handle
             forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
             
             times_in = obj.times - offset;
-            times_in(times_in < forced_timings(1) | times_in > forced_timings(2)) = [];
+            keepTimes = times_in < forced_timings(1) | times_in > forced_timings(2);
+            times_in(keepTimes) = [];
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
             end
@@ -76,7 +77,7 @@ classdef SingleUnit < handle
             ap_times = zeros(size(tt));
             times_in = round(times_in*1e3); % use milliseconds
             if matchScaling
-                ap_times(times_in) = obj.extra.match_confidence;
+                ap_times(times_in) = obj.extra.match_confidence(~keepTimes);
             else
                 ap_times(times_in) = 1;
             end
