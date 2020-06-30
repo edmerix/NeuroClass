@@ -277,17 +277,18 @@ classdef SingleUnit < handle
             end
         end
         % calculate firing rate changes
-        function [sd, rawChange] = fr_change(obj,epochA,epochB)
+        function [sd, rawChange, rates] = fr_change(obj,epochA,epochB)
             % Takes 2 input arguments listing times to compare, each a 1x2
             % vector denoting start and end times for each epoch.
-            % Returns 2 outputs: 
+            % Returns 3 outputs: 
             %   1) the standard deviation of the firing rate change, as
             %      calculated based on the SD of a Poisson distribution
             %      from each epoch's duration;
-            %   and
             %   2) the raw change in firing rate (where 1 = no change, < 1
             %      means epochB had a lower firing rate & > 1 means epochB
-            %      had a higher firing rate.
+            %      had a higher firing rate; and
+            %   3) the firing rates of the two epochs as a 1x2 vector
+            %      (spikes per second)
             if nargin < 3 || isempty(epochA) || isempty(epochB)
                 error('Need two inputs of which times to compare, each a 1x2 vector denoting start and finish times for each epoch')
             end
@@ -296,6 +297,7 @@ classdef SingleUnit < handle
             
             rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
             rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
+            rates = [rateA rateB];
             
             if rateA == rateB
                 rawChange = 1;
