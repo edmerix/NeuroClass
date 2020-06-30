@@ -276,6 +276,53 @@ classdef SingleUnit < handle
                 bins = obj.isi_bins;
             end
         end
+        % calculate firing rate changes
+        function [sd, rawChange] = fr_change(obj,epochA,epochB)
+            % Takes 2 input arguments listing times to compare, each a 1x2
+            % vector denoting start and end times for each epoch.
+            % Returns 2 outputs: 
+            %   1) the standard deviation of the firing rate change, as
+            %      calculated based on the SD of a Poisson distribution
+            %      from each epoch's duration;
+            %   and
+            %   2) the raw change in firing rate (where 1 = no change, < 1
+            %      means epochB had a lower firing rate & > 1 means epochB
+            %      had a higher firing rate.
+            if nargin < 3 || isempty(epochA) || isempty(epochB)
+                error('Need two inputs of which times to compare, each a 1x2 vector denoting start and finish times for each epoch')
+            end
+            epochA = sort(epochA);
+            epochB = sort(epochB);
+            
+            rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
+            rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
+            
+            if rateA == rateB
+                rawChange = 1;
+                sd = 0;
+                return;
+            end
+            
+            rawChange = rateB/rateA;
+            
+            % calculate the distance from equal firing rate:
+            intersect = (rateA+rateB)/2;
+            orthDist = pdist([rateA rateB; intersect intersect]);
+            
+            % calculate what 1 SD firing rate changes would be in a
+            % Poisson-distribution using these epoch durations:
+            lowConf = [intersect+(sqrt(intersect/diff(epochA))) intersect-(sqrt(intersect/diff(epochB)))];
+            highConf = [intersect-(sqrt(intersect/diff(epochA))) intersect+(sqrt(intersect/diff(epochB)))];
+            % calculate what those distances would be, for 
+            lowBoundDist = pdist([lowConf;(sum(lowConf))/2 (sum(lowConf))/2]);
+            hiBoundDist = pdist([highConf;(sum(highConf))/2 (sum(highConf))/2]);
+            
+            if rawChange > 1
+                sd = orthDist/hiBoundDist;
+            else
+                sd = orthDist/lowBoundDist;
+            end
+        end
         % inspect unit
         function inspect_unit(obj)
             %TODO: replace ISI with detection metric
