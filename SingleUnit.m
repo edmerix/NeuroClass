@@ -322,7 +322,7 @@ classdef SingleUnit < handle
             if rawChange > 1
                 sd = orthDist/hiBoundDist;
             else
-                sd = orthDist/lowBoundDist;
+                sd = -orthDist/lowBoundDist;
             end
         end
         % inspect unit

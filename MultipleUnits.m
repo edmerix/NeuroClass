@@ -474,6 +474,106 @@ classdef MultipleUnits < handle
             tt = tt + offset;
             fr = sum(full_fr);
         end
+        % Plot firing rate changes for two epochs (and return the values)
+        function [sd, rawChange, fr] = fr_changes(obj, epochA, epochB, varargin)
+            % Calculate (and plot if 'plot', true) firing rate changes
+            % between two epochs across the whole population.
+            % Takes 2+ input arguments listing times to compare, each a 1x2
+            % vector denoting start and end times for each epoch.
+            % Extra input arguments are settings given as name, value pairs
+            % as below:
+            %  'plot':      true/false, whether or not to make a figure of 
+            %               changes
+            %  'grid':      show or hide grid on figure ('on' or 'off')
+            %  'scale':     'log' or 'linear' for the figure axes (log by 
+            %               default)
+            %  'links':     yet to finish coding, does nothing right now.
+            %  'colors':    3x3 array of rgb values for significant
+            %               increases, non-significant changes, and then
+            %               significant decreases.
+            %  'sd_cutoff': multiple of SD away from preictal in Poisson
+            %               distribution beyond which is deemed significant
+            %
+            % Returns 3 outputs: 
+            %   1) the standard deviation of the firing rate change, as
+            %      calculated based on the SD of a Poisson distribution
+            %      from each epoch's duration;
+            %   2) the raw change in firing rate (where 1 = no change, < 1
+            %      means epochB had a lower firing rate & > 1 means epochB
+            %      had a higher firing rate; and
+            %   3) the firing rates of the two epochs as an nx2 vector
+            %      where n is the number of units in the object (spikes per
+            %      second)
+            %
+            % Note that the plot will not show units with zero firing rate
+            % when 'scale' is set to 'log'.
+            settings.plot = true;
+            settings.grid = 'on';
+            settings.scale = 'log';
+            settings.links = 'off';
+            settings.colors = [
+                0.75 0 0.15;
+                0.2 0.2 0.2;
+                0 0.15 0.75;
+            ];
+            settings.sd_cutoff = 3;
+            
+            allowable = fieldnames(settings);
+            if mod(length(varargin),2) ~= 0
+                error('Inputs must be in name, value pairs');
+            end
+            for v = 1:2:length(varargin)
+                if find(ismember(allowable,varargin{v}))
+                    settings.(varargin{v}) = varargin{v+1};
+                else
+                    disp([9 'Not assigning ''' varargin{v} ''': not a setting option for MultipleUnits.fr_changes method']);
+                end
+            end
+        
+            sd = NaN(length(obj.units), 1);
+            rawChange = NaN(length(obj.units), 1);
+            fr = NaN(length(obj.units), 2);
+            for u = 1:length(obj.units)
+                [sd(u), rawChange(u), fr(u,:)] = obj.units(u).fr_change(epochA,epochB);
+            end
+            
+            if settings.plot
+                warning('off','MATLAB:Axes:NegativeDataInLogAxis');
+                figure;
+                hold all
+                mx = max(fr(:));
+                
+                scale = linspace(0, mx, 1000);
+                scaleAconf = settings.sd_cutoff*(sqrt(scale/range(epochA)));
+                scaleBconf = settings.sd_cutoff*(sqrt(scale/range(epochB)));
+                
+                plot(scale,scale,'k','linewidth',2)
+                plot(scale+scaleAconf,scale-scaleBconf,'--',...
+                    'color',[0.4 0.4 0.4],'linewidth',2)
+                plot(scale-scaleAconf,scale+scaleBconf,'--',...
+                    'color',[0.4 0.4 0.4],'linewidth',2)
+                
+                cols = repmat(settings.colors(2,:),[length(sd) 1]);
+                cols(sd < -settings.sd_cutoff,:) = repmat(settings.colors(3,:), [length(find(sd < -settings.sd_cutoff)) 1]);
+                cols(sd > settings.sd_cutoff,:) = repmat(settings.colors(1,:), [length(find(sd > settings.sd_cutoff)) 1]);
+                
+                scatter(fr(:,1),fr(:,2),30,cols,'filled');
+
+                set(gca,'XScale',settings.scale,'YScale',settings.scale,'FontSize',12,...
+                    'XGrid',settings.grid,'YGrid',settings.grid,'TickDir','out')
+                
+                line(([mx mx]/1000)+(mx/1000/5),[mx/1000 mx+(mx/10)],'color',grey)
+                line([mx/1000 mx+(mx/10)],([mx mx]/1000)+(mx/1000/5),'color',grey)
+                axis([mx/1000 mx+(mx/10) mx/1000 mx+(mx/10)])
+                xlabel(['Mean firing rate from ' num2str(epochA(1)) ' s  to ' num2str(epochA(2)) ' s (spikes s^{-1})'],...
+                    'fontsize',14)
+                ylabel(['Mean firing rate from ' num2str(epochB(1)) ' s  to ' num2str(epochB(2)) ' s (spikes s^{-1})'],...
+                    'fontsize',14)
+                title('Significant firing rate changes')
+                axis('square')
+                warning('on','MATLAB:Axes:NegativeDataInLogAxis');
+            end
+        end
         % Return the unit with a specific UID
         function unit = get_unit(obj,UID)
             unit = obj.units([obj.units.UID] == UID);
