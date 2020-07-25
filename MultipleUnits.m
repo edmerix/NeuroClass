@@ -95,13 +95,13 @@ classdef MultipleUnits < handle
             end
             if settings.showtypes
                 if length(obj.units(end).times) > 1 && isrow(obj.units(end).times)
-                    nIN = length(cell2mat([obj.units(strcmpi([obj.units.type],'in')).times]));
-                    nPC = length(cell2mat([obj.units(strcmpi([obj.units.type],'pc')).times]));
-                    nINmaybe = length(cell2mat([obj.units(strcmpi([obj.units.type],'in?')).times]));
+                    nIN = length(cell2mat([obj.units(strcmpi({obj.units.type},'in')).times]));
+                    nPC = length(cell2mat([obj.units(strcmpi({obj.units.type},'pc')).times]));
+                    nINmaybe = length(cell2mat([obj.units(strcmpi({obj.units.type},'in?')).times]));
                 else
-                    nIN = length(cell2mat({obj.units(strcmpi([obj.units.type],'in')).times}'));
-                    nPC = length(cell2mat({obj.units(strcmpi([obj.units.type],'pc')).times}'));
-                    nINmaybe = length(cell2mat({obj.units(strcmpi([obj.units.type],'in?')).times}'));
+                    nIN = length(cell2mat({obj.units(strcmpi({obj.units.type},'in')).times}'));
+                    nPC = length(cell2mat({obj.units(strcmpi({obj.units.type},'pc')).times}'));
+                    nINmaybe = length(cell2mat({obj.units(strcmpi({obj.units.type},'in?')).times}'));
                 end
 
                 nTotalSpikesIN = 3 * nIN;
