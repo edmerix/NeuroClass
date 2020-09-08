@@ -1,11 +1,11 @@
 classdef MultipleUnits < handle
     properties
         units       SingleUnit
-        patient     string
+        patient     char
         seizure     single
         epoch       double
         snr         double
-        info        string
+        info        char
         extra       struct
     end
 
