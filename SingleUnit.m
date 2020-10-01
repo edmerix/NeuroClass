@@ -184,20 +184,18 @@ classdef SingleUnit < handle
                 t_subset = obj.epoch;
                 sub_times = obj.times;
             end
-            bins = bins/1000; % temporarily work in seconds (easier to change bins than all times)
+            
             d = diff(bins)/2;
             edges = [bins(1)-d(1), bins(1:end-1)+d, bins(end)+d(end)];
-            maxLag = max(bins);
-            minLag = min(bins);
-            result = zeros(length(sub_times),length(bins));
-            for t = 1:length(sub_times)
-                adj_times = setdiff(sub_times,sub_times(t));
-                subset = adj_times(adj_times >= sub_times(t)+minLag & adj_times <= sub_times(t)+maxLag);
-                subset = subset - sub_times(t);
-                result(t,:) = histcounts(subset,edges);
-            end
-            ac_data.xc = sum(result);
-            ac_data.lags = bins*1000; % put back to milliseconds
+            
+            bigMat = repmat(sub_times,1,length(sub_times));
+            bigMat = bigMat - diag(bigMat)';
+            bigMat = bigMat * 1e3; % convert to milliseconds
+
+            vals = histcounts(bigMat(:),edges);
+            vals(1) = vals(1) - length(sub_times); % remove self from AC
+            ac_data.xc = vals;
+            ac_data.lags = bins;
             ac_data.time_subset = t_subset;
             obj.autocorr_data = ac_data;
             ac = ac_data.xc;
