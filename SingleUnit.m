@@ -77,7 +77,13 @@ classdef SingleUnit < handle
             ap_times = zeros(size(tt));
             times_in = round(times_in*1e3); % use milliseconds
             if matchScaling
-                ap_times(times_in) = obj.extra.match_confidence(~keepTimes);
+                if isfield(obj.extra,'match_confidence')
+                    ap_times(times_in) = obj.extra.match_confidence(~keepTimes);
+                elseif isfield(obj.extra,'probabilities')
+                    ap_times(times_in) = obj.extra.probabilities(~keepTimes);
+                else
+                    error('Need to have waveform match confidence stored in the "extra" field under either "match_confidence" or "probabilities"')
+                end
             else
                 ap_times(times_in) = 1;
             end
@@ -445,6 +451,20 @@ classdef SingleUnit < handle
             end
             xc = sum(result);
             lags = bins*1000; % put back to milliseconds
+        end
+        
+        function weightedMean = weightedMeanWaveform(obj)
+            % Calculate the mean waveform, but weighted by each spike's
+            % match confidence
+            wvs = obj.waveforms;
+            if isfield(obj.extra,'match_confidence')
+                conf = obj.extra.match_confidence;
+            elseif isfield(obj.extra,'probabilities')
+                conf = obj.extra.probabilities;
+            else
+                error('Need to have waveform match confidence stored in the "extra" field under either "match_confidence" or "probabilities"')
+            end
+            weightedMean = (size(wvs,1)/sum(conf)) * mean(conf'.*wvs',2);
         end
         
         function [z, dof] = zvals(obj)
