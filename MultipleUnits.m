@@ -578,6 +578,35 @@ classdef MultipleUnits < handle
         function unit = get_unit(obj,UID)
             unit = obj.units([obj.units.UID] == UID);
         end
+        % Save this structure in the default/specified location
+        function save(obj,varargin)
+            settings.path = mfilename('fullpath');
+            settings.path = [fileparts(settings.path) filesep 'Data'];
+            settings.name = 'data';
+            
+            allowable = fieldnames(settings);
+            if mod(length(varargin),2) ~= 0
+                error('Inputs must be in name, value pairs');
+            end
+            for v = 1:2:length(varargin)
+                if find(ismember(allowable,varargin{v}))
+                    settings.(varargin{v}) = varargin{v+1};
+                else
+                    disp([9 'Not assigning ''' varargin{v} ''': not an option in PatientDB.backup()']);
+                end
+            end
+            
+            if ~exist(settings.path,'dir')
+                mkdir(settings.path);
+            end
+            
+            savename = [settings.path filesep 'NeuroClass_' obj.patient '_s' num2str(obj.seizure) '.mat'];
+            mat = matfile(savename,'Writable',true);
+            mat.(settings.name) = obj;
+            disp(['Saved NeuroClass data as variable ''' settings.name ''' in:'])
+            disp([9 savename]);
+            clear mat
+        end
     end
 
     methods (Static = true)
