@@ -64,7 +64,7 @@ classdef SingleUnit < handle
             forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
             
             times_in = obj.times - offset;
-            keepTimes = times_in < forced_timings(1) | times_in > forced_timings(2);
+            keepTimes = times_in <= forced_timings(1) | times_in > forced_timings(2);
             times_in(keepTimes) = [];
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
@@ -281,9 +281,11 @@ classdef SingleUnit < handle
             end
         end
         % calculate firing rate changes
-        function [sd, rawChange, rates] = fr_change(obj,epochA,epochB)
+        function [sd, rawChange, rates] = fr_change(obj,epochA,epochB,scaling)
             % Takes 2 input arguments listing times to compare, each a 1x2
             % vector denoting start and end times for each epoch.
+            % Allows a third input argument to use match probability
+            % scaling (true/false)
             % Returns 3 outputs: 
             %   1) the standard deviation of the firing rate change, as
             %      calculated based on the SD of a Poisson distribution
@@ -296,11 +298,18 @@ classdef SingleUnit < handle
             if nargin < 3 || isempty(epochA) || isempty(epochB)
                 error('Need two inputs of which times to compare, each a 1x2 vector denoting start and finish times for each epoch')
             end
+            if nargin < 4 || isempty(scaling)
+                scaling = false;
+            end
             epochA = sort(epochA);
             epochB = sort(epochB);
-            
-            rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
-            rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
+            if ~scaling
+                rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
+                rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
+            else
+                rateA = sum(obj.extra.match_confidence(obj.times > epochA(1) & obj.times <= epochA(2)))/range(epochA);
+                rateB = sum(obj.extra.match_confidence(obj.times > epochB(1) & obj.times <= epochB(2)))/range(epochB);
+            end
             rates = [rateA rateB];
             
             if rateA == rateB

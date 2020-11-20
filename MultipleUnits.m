@@ -493,6 +493,8 @@ classdef MultipleUnits < handle
             %               significant decreases.
             %  'sd_cutoff': multiple of SD away from preictal in Poisson
             %               distribution beyond which is deemed significant
+            %  'scaling':   whether to use match_confidences to scale
+            %               results (true/false, defaults to false)
             %
             % Returns 3 outputs: 
             %   1) the standard deviation of the firing rate change, as
@@ -514,9 +516,10 @@ classdef MultipleUnits < handle
             settings.colors = [
                 0.75 0 0.15;
                 0.2 0.2 0.2;
-                0 0.15 0.75;
+                0 0.447 0.741;
             ];
             settings.sd_cutoff = 3;
+            settings.scaling = false;
             
             allowable = fieldnames(settings);
             if mod(length(varargin),2) ~= 0
@@ -534,7 +537,7 @@ classdef MultipleUnits < handle
             rawChange = NaN(length(obj.units), 1);
             fr = NaN(length(obj.units), 2);
             for u = 1:length(obj.units)
-                [sd(u), rawChange(u), fr(u,:)] = obj.units(u).fr_change(epochA,epochB);
+                [sd(u), rawChange(u), fr(u,:)] = obj.units(u).fr_change(epochA,epochB,settings.scaling);
             end
             
             if settings.plot
@@ -547,17 +550,17 @@ classdef MultipleUnits < handle
                 scaleAconf = settings.sd_cutoff*(sqrt(scale/range(epochA)));
                 scaleBconf = settings.sd_cutoff*(sqrt(scale/range(epochB)));
                 
-                plot(scale,scale,'k','linewidth',2)
-                plot(scale+scaleAconf,scale-scaleBconf,'--',...
-                    'color',[0.4 0.4 0.4],'linewidth',2)
-                plot(scale-scaleAconf,scale+scaleBconf,'--',...
-                    'color',[0.4 0.4 0.4],'linewidth',2)
+                plot(scale,scale,'k','linewidth',4,'LineStyle','--')
+                plot(scale+scaleAconf,scale-scaleBconf,':',...
+                    'color',[0.4 0.4 0.4],'linewidth',4)
+                plot(scale-scaleAconf,scale+scaleBconf,':',...
+                    'color',[0.4 0.4 0.4],'linewidth',4)
                 
                 cols = repmat(settings.colors(2,:),[length(sd) 1]);
                 cols(sd < -settings.sd_cutoff,:) = repmat(settings.colors(3,:), [length(find(sd < -settings.sd_cutoff)) 1]);
                 cols(sd > settings.sd_cutoff,:) = repmat(settings.colors(1,:), [length(find(sd > settings.sd_cutoff)) 1]);
                 
-                scatter(fr(:,1),fr(:,2),30,cols,'filled');
+                scatter(fr(:,1),fr(:,2),120,cols,'filled');
 
                 set(gca,'XScale',settings.scale,'YScale',settings.scale,'FontSize',12,...
                     'XGrid',settings.grid,'YGrid',settings.grid,'TickDir','out')
@@ -595,14 +598,23 @@ classdef MultipleUnits < handle
                     disp([9 'Not assigning ''' varargin{v} ''': not an option in PatientDB.backup()']);
                 end
             end
-            
+            if ~strcmp(settings.name,'data')
+                warning(['Changed the save method and now must use ''data'' as save variable, not ''' settings.name ''' '])
+            end
+            data = obj;
             if ~exist(settings.path,'dir')
                 mkdir(settings.path);
             end
             
             savename = [settings.path filesep 'NeuroClass_' obj.patient '_s' num2str(obj.seizure) '.mat'];
+            %{
+            % THIS METHOD MAKES HUGE FILES (it saves the whole class object
+            % & thus a load of data that it isn't dependent on if you have
+            % the class definition on your path)
             mat = matfile(savename,'Writable',true);
             mat.(settings.name) = obj;
+            %}
+            save(savename,'data');
             disp(['Saved NeuroClass data as variable ''' settings.name ''' in:'])
             disp([9 savename]);
             clear mat
