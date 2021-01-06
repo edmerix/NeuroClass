@@ -199,7 +199,8 @@ classdef SingleUnit < handle
             bigMat = bigMat * 1e3; % convert to milliseconds
 
             vals = histcounts(bigMat(:),edges);
-            vals(1) = vals(1) - length(sub_times); % remove self from AC
+            [~,wh] = min(abs(edges));
+            vals(wh) = vals(wh) - length(sub_times); % remove self from AC
             ac_data.xc = vals;
             ac_data.lags = bins;
             ac_data.time_subset = t_subset;
