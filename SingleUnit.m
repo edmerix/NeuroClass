@@ -70,7 +70,7 @@ classdef SingleUnit < handle
                 matchScaling = false;
             end
             
-            gaussSize = [1 1000]; % size of Gaussian window
+            gaussSize = [1 SD*10]; % size of Gaussian window (make sure it doesn't get clipped)
             w = fspecial('gaussian',gaussSize,SD);
             
             tt = forced_timings(1)*1e3:forced_timings(2)*1e3;
