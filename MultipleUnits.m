@@ -495,6 +495,8 @@ classdef MultipleUnits < handle
             %               distribution beyond which is deemed significant
             %  'scaling':   whether to use match_confidences to scale
             %               results (true/false, defaults to false)
+            %  'axes':      handle to axes object to plot to (will plot to
+            %               new figure if none provided)
             %
             % Returns 3 outputs: 
             %   1) the standard deviation of the firing rate change, as
@@ -520,6 +522,7 @@ classdef MultipleUnits < handle
             ];
             settings.sd_cutoff = 3;
             settings.scaling = false;
+            settings.axes = [];
             
             allowable = fieldnames(settings);
             if mod(length(varargin),2) ~= 0
@@ -542,38 +545,41 @@ classdef MultipleUnits < handle
             
             if settings.plot
                 warning('off','MATLAB:Axes:NegativeDataInLogAxis');
-                figure;
-                hold all
+                if ~isgraphics(settings.axes)
+                    figure;
+                    settings.axes = gca;
+                end
+                hold(settings.axes,'all')
                 mx = max(fr(:));
                 
                 scale = linspace(0, mx, 1000);
                 scaleAconf = settings.sd_cutoff*(sqrt(scale/range(epochA)));
                 scaleBconf = settings.sd_cutoff*(sqrt(scale/range(epochB)));
                 
-                plot(scale,scale,'k','linewidth',4,'LineStyle','--')
-                plot(scale+scaleAconf,scale-scaleBconf,':',...
+                plot(settings.axes,scale,scale,'k','linewidth',4,'LineStyle','--')
+                plot(settings.axes,scale+scaleAconf,scale-scaleBconf,':',...
                     'color',[0.4 0.4 0.4],'linewidth',4)
-                plot(scale-scaleAconf,scale+scaleBconf,':',...
+                plot(settings.axes,scale-scaleAconf,scale+scaleBconf,':',...
                     'color',[0.4 0.4 0.4],'linewidth',4)
                 
                 cols = repmat(settings.colors(2,:),[length(sd) 1]);
                 cols(sd < -settings.sd_cutoff,:) = repmat(settings.colors(3,:), [length(find(sd < -settings.sd_cutoff)) 1]);
                 cols(sd > settings.sd_cutoff,:) = repmat(settings.colors(1,:), [length(find(sd > settings.sd_cutoff)) 1]);
                 
-                scatter(fr(:,1),fr(:,2),120,cols,'filled');
+                scatter(settings.axes,fr(:,1),fr(:,2),120,cols,'filled');
 
-                set(gca,'XScale',settings.scale,'YScale',settings.scale,'FontSize',12,...
+                set(settings.axes,'XScale',settings.scale,'YScale',settings.scale,'FontSize',12,...
                     'XGrid',settings.grid,'YGrid',settings.grid,'TickDir','out')
                 
-                line(([mx mx]/1000)+(mx/1000/5),[mx/1000 mx+(mx/10)],'color',grey)
-                line([mx/1000 mx+(mx/10)],([mx mx]/1000)+(mx/1000/5),'color',grey)
-                axis([mx/1000 mx+(mx/10) mx/1000 mx+(mx/10)])
-                xlabel(['Mean firing rate from ' num2str(epochA(1)) ' s  to ' num2str(epochA(2)) ' s (spikes s^{-1})'],...
+                line(settings.axes,([mx mx]/1000)+(mx/1000/5),[mx/1000 mx+(mx/10)],'color',grey)
+                line(settings.axes,[mx/1000 mx+(mx/10)],([mx mx]/1000)+(mx/1000/5),'color',grey)
+                axis(settings.axes,[mx/1000 mx+(mx/10) mx/1000 mx+(mx/10)])
+                xlabel(settings.axes,['Mean firing rate from ' num2str(epochA(1)) ' s  to ' num2str(epochA(2)) ' s (spikes s^{-1})'],...
                     'fontsize',14)
-                ylabel(['Mean firing rate from ' num2str(epochB(1)) ' s  to ' num2str(epochB(2)) ' s (spikes s^{-1})'],...
+                ylabel(settings.axes,['Mean firing rate from ' num2str(epochB(1)) ' s  to ' num2str(epochB(2)) ' s (spikes s^{-1})'],...
                     'fontsize',14)
-                title('Significant firing rate changes')
-                axis('square')
+                title(settings.axes,'Significant firing rate changes')
+                axis(settings.axes,'square')
                 warning('on','MATLAB:Axes:NegativeDataInLogAxis');
             end
         end
