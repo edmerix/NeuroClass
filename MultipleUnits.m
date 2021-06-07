@@ -84,7 +84,7 @@ classdef MultipleUnits < handle
         end
         % simple raster plot (speedy)
         function raster(obj,varargin)
-            settings.axes = gca;
+            settings.axes = [];
             settings.showtypes = false;
             settings.base_color = [0 0 0];
             settings.in_color = [0.64 0.08 0.18];
@@ -92,6 +92,9 @@ classdef MultipleUnits < handle
             settings.linewidth = 1;
             for v = 1:2:length(varargin)
                 settings.(varargin{v}) = varargin{v+1};
+            end
+            if isempty(settings.axes)
+                settings.axes = gca;
             end
             if settings.showtypes
                 if length(obj.units(end).times) > 1 && isrow(obj.units(end).times)
@@ -545,7 +548,7 @@ classdef MultipleUnits < handle
             
             if settings.plot
                 warning('off','MATLAB:Axes:NegativeDataInLogAxis');
-                if ~isgraphics(settings.axes)
+                if isempty(settings.axes) || ~isgraphics(settings.axes)
                     figure;
                     settings.axes = gca;
                 end
