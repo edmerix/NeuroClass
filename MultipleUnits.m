@@ -399,6 +399,12 @@ classdef MultipleUnits < handle
             end
             units = obj.units(picked == 1);
         end
+        % return all units from specific electrode label
+        function units = electrode_units(obj,elec)
+            unitElecs = {obj.units.electrodelabel};
+            inds = contains(unitElecs,elec);
+            units = obj.units(inds);
+        end
         % SNR ratio of units:
         function unit_snr(obj)
             obj.snr = nan(1,length(obj.units));
