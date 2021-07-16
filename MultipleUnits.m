@@ -8,11 +8,11 @@ classdef MultipleUnits < handle
         info        char
         extra       struct
     end
-
+    
     properties (SetAccess = private, Hidden = true)
         current_order = 'none';
     end
-
+    
     methods
         % constructor
         function obj = MultipleUnits(varargin)
@@ -106,7 +106,7 @@ classdef MultipleUnits < handle
                     nPC = length(cell2mat({obj.units(strcmpi({obj.units.type},'pc')).times}'));
                     nINmaybe = length(cell2mat({obj.units(strcmpi({obj.units.type},'in?')).times}'));
                 end
-
+                
                 nTotalSpikesIN = 3 * nIN;
                 nTotalSpikesPC = 3 * nPC;
                 nTotalSpikesINmaybe = 3 * nINmaybe;
@@ -122,23 +122,23 @@ classdef MultipleUnits < handle
             else
                 % Based on plotSpikeRaster by Jeffrey Chiou:
                 nTotalSpikes = 3 * length(obj.all_spike_times);
-
+                
                 % We can make it a continuous plot by separating segments with NaNs
                 xPoints = NaN(nTotalSpikes*3,1);
                 yPoints = xPoints;
                 currentInd = 1;
             end
-
+            
             for u = 1:length(obj.units)
                 nSpikes = length(obj.units(u).times);
                 nanSeparator = NaN(1,nSpikes);
-
+                
                 trialXPoints = [obj.units(u).times'; obj.units(u).times'; nanSeparator];
                 trialXPoints = trialXPoints(:);
-
+                
                 trialYPoints = [(u-0.5)*ones(1,nSpikes); (u+0.5)*ones(1,nSpikes); nanSeparator];
                 trialYPoints = trialYPoints(:);
-
+                
                 % Save points and update current index
                 if settings.showtypes
                     if strcmpi(obj.units(u).type,'in')
@@ -229,7 +229,7 @@ classdef MultipleUnits < handle
             if min(obj.epoch) < 0 && max(obj.epoch) > 0
                 line(settings.axes,[0 0],[0 n],'color','r')
             end
-
+            
             xlim(settings.axes,obj.epoch);
             ylim(settings.axes,[0 n])
             xlabel(settings.axes,'Time (s)')
@@ -244,9 +244,9 @@ classdef MultipleUnits < handle
             if nargin < 3 || isempty(darkmode)
                 darkmode = true;
             end
-
+            
             these_units = obj.channel_units(chan);
-
+            
             bgcol = [1 1 1];
             if darkmode
                 bgcol = [0.1412 0.1529 0.1804];
@@ -298,7 +298,7 @@ classdef MultipleUnits < handle
             ylabel(ax(1),'Unit number')
             zlabel(ax(1),'Voltage (\muV)')
             view(ax(1),3)
-
+            
             full_waves = cell2mat({these_units.waveforms}');
             [~,pc] = pca(full_waves);
             unq_assigns = unique(assigns,'stable');
@@ -393,7 +393,7 @@ classdef MultipleUnits < handle
             picked = zeros(1,length(obj.units));
             for u = 1:length(obj.units)
                 if (ischar(chan) && strcmpi(obj.units(u).electrodelabel, chan)) || ...
-                    (isnumeric(chan) && obj.units(u).channel == chan)
+                        (isnumeric(chan) && obj.units(u).channel == chan)
                     picked(u) = 1;
                 end
             end
@@ -491,10 +491,10 @@ classdef MultipleUnits < handle
             % vector denoting start and end times for each epoch.
             % Extra input arguments are settings given as name, value pairs
             % as below:
-            %  'plot':      true/false, whether or not to make a figure of 
+            %  'plot':      true/false, whether or not to make a figure of
             %               changes
             %  'grid':      show or hide grid on figure ('on' or 'off')
-            %  'scale':     'log' or 'linear' for the figure axes (log by 
+            %  'scale':     'log' or 'linear' for the figure axes (log by
             %               default)
             %  'links':     yet to finish coding, does nothing right now.
             %  'colors':    3x3 array of rgb values for significant
@@ -507,7 +507,7 @@ classdef MultipleUnits < handle
             %  'axes':      handle to axes object to plot to (will plot to
             %               new figure if none provided)
             %
-            % Returns 3 outputs: 
+            % Returns 3 outputs:
             %   1) the standard deviation of the firing rate change, as
             %      calculated based on the SD of a Poisson distribution
             %      from each epoch's duration;
@@ -528,7 +528,7 @@ classdef MultipleUnits < handle
                 0.75 0 0.15;
                 0.2 0.2 0.2;
                 0 0.447 0.741;
-            ];
+                ];
             settings.sd_cutoff = 3;
             settings.scaling = false;
             settings.axes = [];
@@ -544,7 +544,7 @@ classdef MultipleUnits < handle
                     disp([9 'Not assigning ''' varargin{v} ''': not a setting option for MultipleUnits.fr_changes method']);
                 end
             end
-        
+            
             sd = NaN(length(obj.units), 1);
             rawChange = NaN(length(obj.units), 1);
             fr = NaN(length(obj.units), 2);
@@ -576,7 +576,7 @@ classdef MultipleUnits < handle
                 cols(sd > settings.sd_cutoff,:) = repmat(settings.colors(1,:), [length(find(sd > settings.sd_cutoff)) 1]);
                 
                 scatter(settings.axes,fr(:,1),fr(:,2),120,cols,'filled');
-
+                
                 set(settings.axes,'XScale',settings.scale,'YScale',settings.scale,'FontSize',12,...
                     'XGrid',settings.grid,'YGrid',settings.grid,'TickDir','out')
                 
@@ -634,20 +634,68 @@ classdef MultipleUnits < handle
             disp([9 savename]);
             clear mat
         end
+        
+        function calculateMetrics(obj)
+            % Calculate/update the Gaussian estimations of false +ve/-ves
+            % in the "metrics" field of each child SingleUnit object. To
+            % update the other metrics, use the equivalent calculateMetrics
+            % method within each child SingleUnit object.
+            % Use the SingleUnit.metrics methods falsePositiveRate() and
+            % falseNegativeRate() to return the reportable rates as
+            % described in Hill et al., JNeurosci, 2011.
+            % Depends on the original UltraMegaSort2000 being on the path.
+            
+            if ~exist('gaussian_overlap','file')
+                error('Need the original gaussian_overlap() function from UltraMegaSort2000 on the path to calculate Gaussian estimates of false +ves/-ves')
+            end
+            % Make sure each SingleUnit has an active UnitMetrics object in
+            % the metrics field:
+            for u = 1:length(obj.units)
+                if isempty(obj.units(u).metrics)
+                    obj.units(u).metrics = UnitMetrics();
+                end
+            end
+            chans = obj.top_channels(length(obj.units),true);
+            for c = 1:length(chans)
+                chanUnits = obj.channel_units(chans(c));
+                if length(chanUnits) > 1
+                    pairs = nchoosek(1:length(chanUnits),2);
+                    fp = NaN(length(chanUnits));
+                    fn = NaN(length(chanUnits));
+                    for p = 1:size(pairs,1)
+                        conf = gaussian_overlap(chanUnits(pairs(p,1)).waveforms,chanUnits(pairs(p,2)).waveforms);
+                        fp(pairs(p,1),pairs(p,2)) = conf(1,1);
+                        fp(pairs(p,2),pairs(p,1)) = conf(2,2);
+                        fn(pairs(p,1),pairs(p,2)) = conf(1,2);
+                        fn(pairs(p,2),pairs(p,1)) = conf(2,1);
+                    end
+                    for u = 1:length(chanUnits)
+                        obj.units([obj.units.UID] == chanUnits(u).UID).metrics.gmFalsePos = fp(u,setdiff(1:length(chanUnits),u));
+                        obj.units([obj.units.UID] == chanUnits(u).UID).metrics.gmFalseNeg = fn(u,setdiff(1:length(chanUnits),u));
+                        
+                        obj.units([obj.units.UID] == chanUnits(u).UID).metrics.gmUIDs = [chanUnits(setdiff(1:length(chanUnits),u)).UID];
+                    end
+                else
+                    obj.units([obj.units.UID] == chanUnits.UID).metrics.gmFalsePos = 0;
+                    obj.units([obj.units.UID] == chanUnits.UID).metrics.gmFalseNeg = 0;
+                    obj.units([obj.units.UID] == chanUnits.UID).metrics.gmUIDs = [];
+                end
+            end
+        end
     end
-
+    
     methods (Static = true)
         function colorcode = jitter_color(colorcode,amt)
             if nargin < 1 || isempty(colorcode) || length(colorcode) ~= 3
                 error('Must supply a color code in matlab format (1 x 3, 0-1 range)')
             end
-
+            
             if nargin < 2 || isempty(amt)
                 amt = 1/3;
             end
-
+            
             transposed = false;
-
+            
             if iscolumn(colorcode)
                 colorcode = colorcode';
                 transposed = true;
@@ -663,10 +711,10 @@ classdef MultipleUnits < handle
                 end
                 colorcode(:,a) = colorcode(:,a)+jitter;
             end
-
+            
             colorcode(colorcode > 1) = 1;
             colorcode(colorcode < 0) = 0;
-
+            
             if transposed
                 colorcode = colorcode';
             end
@@ -678,17 +726,17 @@ classdef MultipleUnits < handle
             if nargin < 2 || isempty(bg)
                 bg = [1 1 1];
             end
-
+            
             x = linspace(0,1,30);
             [R,G,B] = ndgrid(x,x,x);
             rgb = [R(:) G(:) B(:)];
-
+            
             C = makecform('srgb2lab');
             lab = applycform(rgb,C);
             bglab = applycform(bg,C);
-
+            
             mindist2 = inf(size(rgb,1),1);
-
+            
             cols = zeros(n_colors,3);
             lastlab = bglab(end,:);   % initialize by making the "previous" color equal to background
             for i = 1:n_colors
@@ -701,5 +749,5 @@ classdef MultipleUnits < handle
             end
         end
     end
-
+    
 end

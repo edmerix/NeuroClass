@@ -12,9 +12,12 @@ classdef SingleUnit < handle
         type                char
         typeprob    (:,1)   single
         threshold           double
+        Fs          (1,1)   double = 3e4
+        metrics             UnitMetrics
+        sameUnit    (1,:)   SingleUnit
         extra % used to assign anything extra by the user
     end
-
+    
     properties (SetAccess = private, Hidden = true)
         gaussian_estimate
         autocorr_data
@@ -22,7 +25,7 @@ classdef SingleUnit < handle
         isi
         isi_bins
     end
-
+    
     methods
         % constructor
         function obj = SingleUnit(varargin)
@@ -48,8 +51,8 @@ classdef SingleUnit < handle
             % Can also supply "forced_timings" which will keep the min and
             % max bins the same regardless of when the earliest or latest
             % spike occurs for this unit.
-            % If "matchScaling" is set to true, then output firing rate 
-            % will be scaled by the probability of each spike being a true 
+            % If "matchScaling" is set to true, then output firing rate
+            % will be scaled by the probability of each spike being a true
             % match to that unit. Tell Ed to write this better.
             if nargin < 2 || isempty(SD)
                 SD = 200;
@@ -92,7 +95,7 @@ classdef SingleUnit < handle
             fr = fr * 1e3;  % back to seconds
             tt = tt/1e3;    % back to seconds
             tt = tt + offset;
-
+            
             gInfo.rate = fr;
             gInfo.time = tt;
             gInfo.SD = SD;
@@ -197,7 +200,7 @@ classdef SingleUnit < handle
             bigMat = repmat(sub_times,1,length(sub_times));
             bigMat = bigMat - diag(bigMat)';
             bigMat = bigMat * 1e3; % convert to milliseconds
-
+            
             vals = histcounts(bigMat(:),edges);
             [~,wh] = min(abs(edges));
             vals(wh) = vals(wh) - length(sub_times); % remove self from AC
@@ -249,8 +252,8 @@ classdef SingleUnit < handle
         end
         % calculate ISI
         function obj = ISI(obj,bins)
-             % add an extra bin to delete to avoid all values beyond that
-             % value being counted in that bin
+            % add an extra bin to delete to avoid all values beyond that
+            % value being counted in that bin
             temp_bins = [bins bins(end)+(bins(2)-bins(1))];
             ISI = diff(obj.times*1000);
             obj.isi = hist(ISI,temp_bins);
@@ -287,7 +290,7 @@ classdef SingleUnit < handle
             % vector denoting start and end times for each epoch.
             % Allows a third input argument to use match probability
             % scaling (true/false)
-            % Returns 3 outputs: 
+            % Returns 3 outputs:
             %   1) the standard deviation of the firing rate change, as
             %      calculated based on the SD of a Poisson distribution
             %      from each epoch's duration;
@@ -329,7 +332,7 @@ classdef SingleUnit < handle
             % Poisson-distribution using these epoch durations:
             lowConf = [intersect+(sqrt(intersect/diff(epochA))) intersect-(sqrt(intersect/diff(epochB)))];
             highConf = [intersect-(sqrt(intersect/diff(epochA))) intersect+(sqrt(intersect/diff(epochB)))];
-            % calculate what those distances would be, for 
+            % calculate what those distances would be, for
             lowBoundDist = pdist([lowConf;(sum(lowConf))/2 (sum(lowConf))/2]);
             hiBoundDist = pdist([highConf;(sum(highConf))/2 (sum(highConf))/2]);
             
@@ -345,7 +348,7 @@ classdef SingleUnit < handle
             detects = obj.waveforms(:,19);
             [h,x] = histcounts(detects,100);
             x = (diff(x)/2)+x(1:end-1); % convert bin edges into bin centers
-
+            
             %{
             % ISI:
             bins = 0:1:100;
@@ -424,14 +427,14 @@ classdef SingleUnit < handle
             plot3(pc(:,1),pc(:,2),pc(:,3),'.')
             rotate3d('on')
             xlabel('PC 1'),ylabel('PC 2'),zlabel('PC 3')
-
+            
             if exist('cleanupfig','file')
                 for a = 1:length(ax)
                     cleanupfig(ax(a),'grid','smallfont');
                 end
             end
         end
-
+        
         % calculate cross-correlation with another unit
         function [xc, lags] = xcorr(obj,unit,bins,t_subset)
             if nargin < 2 || isempty(unit)
@@ -491,13 +494,210 @@ classdef SingleUnit < handle
             v = v(:,last);                 % use last r dimensions
             w = detrend(w,'constant');     % mean subtract
             w = (w*v);                     % project on to PCs
-
+            
             % get Mahalanobis distance
             z = zeros([1 num_spikes]);
             dinv = inv(d(last,last));
             for j = 1:num_spikes
                 z(j) = w(j,:)*dinv*w(j,:)';
             end
+        end
+        
+        function linkUnits(obj,otherUnit)
+            % Use to store a reference to other SingleUnit objects that are
+            % from the same putative single neuron as this one (this method
+            % automatically completes the reverse connection, adding this
+            % unit to that SingleUnit's "otherUnit" list at the same time)
+            % e.g. unit(1).sameUnit(unit(2)) will link units 1 and 2. More
+            % likely to be used across different MultipleUnits sessions
+            % than within one though.
+            obj.sameUnit(end+1) = otherUnit;
+            otherUnit.sameUnit(end+1) = obj;
+        end
+        
+        function calculateMetrics(obj,varargin)
+            % Calculate/update the metrics stored in the "metrics" field.
+            % Optional 'name', 'value' pairs for input settings:
+            %  bins:        bins (in ms) to use for autocorrelation
+            %               analysis. Default = 0:100;
+            %  epoch:       epoch (in s) to use for calculation of firing
+            %               info. Default = [-Inf Inf];
+            %  uprate:      interpolation factor for calculating waveform 
+            %               features. Default = 4;
+            %  idealized:   whether or not to fit a polynomial to the
+            %               spike's return to baseline to remove artifacts
+            %               Default = false;
+            %  order:       polynomial order to use for idealized spike 
+            %               waveform (if idealized == true). Default = 4;
+            %  troughIndex: the data point that the spike's trough should
+            %               be located at. Default: finds spike minimum.
+            %  useMean:     if true, will use the mean of the full,
+            %               filtered matrix of waveforms in the object,
+            %               rather than the wideband spike. N.B. if useMean
+            %               is set to true, you *must* set the troughIndex
+            %               input manually. Default: false;
+            %
+            % Note that this method does not have access to which other
+            % units are from the same channel, so to update the Gaussian
+            % estimates of false positives/negatives, use the equivalent
+            % calculateMetrics() method in a parent MultipleUnits object.
+            settings.bins = 0:100;
+            settings.epoch = [-Inf Inf];
+            settings.uprate = 4;
+            settings.idealized = false;  % if true, fit a polynomial to spike's 
+            settings.order = 4; % polynomial order for idealized spike waveform
+            [~,settings.troughIndex] = min(obj.wideband);
+            settings.useMean = false; % if false, use wideband, if true, use mean of waveforms in unit
+            
+            allowable = fieldnames(settings);
+            if ~isempty(varargin) && mod(length(varargin),2) ~= 0
+                error('Inputs must be in name, value pairs');
+            end
+            for v = 1:2:length(varargin)
+                if find(ismember(allowable,varargin{v}))
+                    settings.(varargin{v}) = varargin{v+1};
+                else
+                    disp([9 'Not assigning ''' varargin{v} ''': not a setting in SingleUnit:calculateMetrics()']);
+                end
+            end
+
+            if isempty(obj.metrics)
+                obj.metrics = UnitMetrics();
+            end
+            
+            noWide = false;
+            if range(obj.wideband) == 0
+                warning('Wideband waveform is flat, not calculating waveform features')
+                noWide = true;
+            end
+            
+            if ~noWide && any(isnan(obj.wideband))
+                warning('NaN values in wideband waveform, not calculating waveform features')
+                noWide = true;
+            end
+            
+            if ~noWide && settings.troughIndex*settings.uprate < 21
+                warning('Trough index is too early, not calculating waveform features')
+                noWide = true;
+            end
+            
+            %% Calculate distribution metrics, as per Hill et al., JNeurosci 2011:
+            if ~exist('undetected.m','file')
+                warning('Cannot find original UltraMegaSort2000 on the path, skipping missingRate calculation')
+                obj.metrics.missingRate = NaN;
+            else
+                if ~isempty(obj.threshold) && ~isnan(obj.threshold)
+                    obj.metrics.missingRate = undetected(obj.waveforms,obj.threshold,'auto');
+                else
+                    obj.metrics.missingRate = NaN;
+                end
+            end
+            
+            %% Calculate waveform metrics: (if not noWide)
+            if ~noWide
+                wv = obj.wideband;% - mean(obj.wideband);
+                wv = wv/-wv(settings.troughIndex);
+                
+                % Fit the polynomial if idealized == true:
+                if settings.idealized
+                    t = (0:(length(wv)-settings.troughIndex));
+                    p = polyfit(t',wv(settings.troughIndex:end),settings.idealizedOrder);
+                    returnWv = polyval(p,t);
+                else
+                    returnWv = wv(settings.troughIndex:end);
+                end
+                
+                % get indices that are positive to find zero crossings:
+                postPos = find(returnWv >= 0);
+                if isempty(postPos)
+                    postPos = length(returnWv);
+                end
+                
+                % Repol & recov slopes are based on Allen Institute spike sort:
+                % (https://github.com/AllenInstitute/ecephys_spike_sorting/tree/master/ecephys_spike_sorting/modules/mean_waveforms)
+                
+                % Repolarization slope:
+                subset = returnWv(1:postPos(1));
+                t = (0:postPos(1)-1)/(obj.Fs/1e3);
+                lm = fitlm(t,subset);
+                obj.metrics.repolarizationSlope = lm.Coefficients.Estimate(2);
+                
+                % Recovery slope:
+                %[~,w] = max(returnWv);
+                [~,w] = findpeaks(returnWv);
+                if isempty(w)
+                    [~,w] = max(returnWv);
+                else
+                    w = w(1); % TODO: run some test waveforms to check this is never tripped up (shouldn't be if idealized == true, but maybe in raw?)
+                end
+                runTo = min(w+ceil(0.5*obj.Fs),length(returnWv)); % look over half a millisecond
+                subset = returnWv(w-1:runTo);
+                t = (w-1:runTo)/(obj.Fs/1e3);
+                lm = fitlm(t,subset);
+                obj.metrics.recoverySlope = lm.Coefficients.Estimate(2);
+                
+                % Trough to peak delay:
+                obj.metrics.troughToPeak = (w-1)/(obj.Fs/1e3);
+                
+                % FWHM:
+                fwhmWv = interp(wv,settings.uprate);
+                [~,ind] = min(fwhmWv((settings.troughIndex*settings.uprate)-20:(settings.troughIndex*settings.uprate)+20));
+                keypoint = ind + (settings.troughIndex*settings.uprate) - 21;
+                if keypoint < 1 || keypoint > length(fwhmWv)
+                    obj.metrics.FWHM = Inf;
+                    disp([9 'Couldn''t find FWHM'])
+                else
+                    fwhmWv = fwhmWv - fwhmWv(keypoint);
+                    fwhmWv = 2 * (fwhmWv/max(fwhmWv(settings.troughIndex*settings.uprate:end)) - 0.5);
+                    inds = find(fwhmWv >= 0);
+                    pre_inds = inds(inds < keypoint);
+                    post_inds = inds(inds > keypoint);
+                    if ~isempty(pre_inds) && ~isempty(post_inds)
+                        pre_ind = pre_inds(end);
+                        post_ind = post_inds(1);
+
+                        n = fwhmWv(pre_ind);
+                        m = fwhmWv(pre_ind+1);
+                        addition = n/(n-m);
+
+                        n = fwhmWv(post_ind);
+                        m = fwhmWv(post_ind-1);
+                        subtraction = n/(n-m);
+
+                        obj.metrics.FWHM = ((post_ind-subtraction) - (pre_ind+addition))/((obj.Fs/1e3)*settings.uprate);
+                    else
+                        obj.metrics.FWHM = Inf;
+                        disp([9 'Couldn''t find FWHM'])
+                    end
+                end
+            end
+            
+            %% Calculate firing metrics:
+            tt = obj.times(obj.times >= settings.epoch(1) & obj.times <= settings.epoch(2));
+            
+            % AC calculation:
+            if isrow(tt)
+                tt = tt';
+            end
+            bigMat = repmat(tt,1,length(tt));
+            bigMat = bigMat - diag(bigMat)';
+            bigMat = bigMat * 1e3; % ms
+
+            ac = histcounts(bigMat(:),settings.bins);
+            [~,wh] = min(abs(settings.bins));
+            ac(wh) = ac(wh) - length(tt); % remove self from AC
+            % calculate area under the cumulative AC, per ms:
+            obj.metrics.ACarea = (sum(cumsum(ac))/sum(ac))/length(settings.bins) * range(settings.bins);
+            
+            % RPV percentage:
+            rpvs = length(find(bigMat(:) >= 0 & bigMat(:) < 2));
+            rpvs = rpvs - length(tt); % remove self from count
+            obj.metrics.rpvRate = rpvs/length(tt);
+            
+            % Mean AC:
+            subset = bigMat(bigMat >= settings.bins(1) & bigMat < settings.bins(end));
+            subset(subset == 0) = [];
+            obj.metrics.meanAC = nanmean(subset);
         end
     end
 end
