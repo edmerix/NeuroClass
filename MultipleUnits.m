@@ -655,9 +655,20 @@ classdef MultipleUnits < handle
                     obj.units(u).metrics = UnitMetrics();
                 end
             end
-            chans = obj.top_channels(length(obj.units),true);
+            if isempty([obj.units.channel])
+                isElec = true;
+                chans = obj.top_electrodes(length(obj.units));
+            else
+                isElec = false;
+                chans = obj.top_channels(length(obj.units),true);
+            end
+            
             for c = 1:length(chans)
-                chanUnits = obj.channel_units(chans(c));
+                if isElec
+                    chanUnits = obj.channel_units(chans{c});
+                else
+                    chanUnits = obj.channel_units(chans(c));
+                end
                 if length(chanUnits) > 1
                     pairs = nchoosek(1:length(chanUnits),2);
                     fp = NaN(length(chanUnits));

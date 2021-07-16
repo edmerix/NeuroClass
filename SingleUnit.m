@@ -578,20 +578,25 @@ classdef SingleUnit < handle
                 obj.metrics = UnitMetrics();
             end
             
-            noWide = false;
-            if range(obj.wideband) == 0
+            if settings.useMean
+                wv = nanmean(obj.waveforms);
+            else
+                wv = obj.wideband;
+            end
+            noWv = false;
+            if range(wv) == 0
                 warning('Wideband waveform is flat, not calculating waveform features')
-                noWide = true;
+                noWv = true;
             end
             
-            if ~noWide && any(isnan(obj.wideband))
+            if ~noWv && any(isnan(wv))
                 warning('NaN values in wideband waveform, not calculating waveform features')
-                noWide = true;
+                noWv = true;
             end
             
-            if ~noWide && settings.troughIndex*settings.uprate < 21
+            if ~noWv && settings.troughIndex*settings.uprate < 21
                 warning('Trough index is too early, not calculating waveform features')
-                noWide = true;
+                noWv = true;
             end
             
             %% Calculate distribution metrics, as per Hill et al., JNeurosci 2011:
@@ -607,8 +612,7 @@ classdef SingleUnit < handle
             end
             
             %% Calculate waveform metrics: (if not noWide)
-            if ~noWide
-                wv = obj.wideband;% - mean(obj.wideband);
+            if ~noWv
                 wv = wv/-wv(settings.troughIndex);
                 
                 % Fit the polynomial if idealized == true:
