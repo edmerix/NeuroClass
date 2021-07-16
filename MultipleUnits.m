@@ -663,7 +663,13 @@ classdef MultipleUnits < handle
                     fp = NaN(length(chanUnits));
                     fn = NaN(length(chanUnits));
                     for p = 1:size(pairs,1)
-                        conf = gaussian_overlap(chanUnits(pairs(p,1)).waveforms,chanUnits(pairs(p,2)).waveforms);
+                        try
+                            conf = gaussian_overlap(chanUnits(pairs(p,1)).waveforms,chanUnits(pairs(p,2)).waveforms);
+                        catch err
+                            warning(['Had error during gaussian_overlap calculation for channel ' num2str(chans(c)) ', setting to NaNs:'])
+                            disp([9 '(' err.message ')'])
+                            conf = nan(2,2);
+                        end
                         fp(pairs(p,1),pairs(p,2)) = conf(1,1);
                         fp(pairs(p,2),pairs(p,1)) = conf(2,2);
                         fn(pairs(p,1),pairs(p,2)) = conf(1,2);

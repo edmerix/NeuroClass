@@ -37,18 +37,5 @@ classdef UnitMetrics < handle
             fn = (1 - (1-obj.missingRate)) + sum(obj.gmFalseNeg);
         end
         
-        function fr = firingRate(obj,epoch)
-            if nargin < 1 || isempty(epoch)
-                epoch = [-Inf Inf];
-            end
-            
-        end
-        
-        function fr = meanInstantaneousFR(obj,epoch)
-            if nargin < 1 || isempty(epoch)
-                epoch = [-Inf Inf];
-            end
-            
-        end
     end
 end

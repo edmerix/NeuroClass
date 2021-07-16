@@ -80,13 +80,20 @@ classdef SingleUnit < handle
             ap_times = zeros(size(tt));
             times_in = round(times_in*1e3); % use milliseconds
             if matchScaling
-                if isfield(obj.extra,'match_confidence')
-                    ap_times(times_in) = obj.extra.match_confidence(~keepTimes);
-                elseif isfield(obj.extra,'probabilities')
-                    ap_times(times_in) = obj.extra.probabilities(~keepTimes);
-                else
-                    error('Need to have waveform match confidence stored in the "extra" field under either "match_confidence" or "probabilities"')
+                if isempty(obj.metrics)
+                    obj.metrics = UnitMetrics();
                 end
+                if isempty(obj.metrics.matchConfidence)
+                    % try and find them under the locations from old versions:
+                    if isfield(obj.extra,'match_confidence')
+                        obj.metrics.matchConfidence = obj.extra.match_confidence;
+                    elseif isfield(obj.extra,'probabilities')
+                        obj.metrics.matchConfidence = obj.extra.probabilities;
+                    else
+                        error('Need to have waveform match confidence stored in the "matchConfidence" field under "metrics"')
+                    end
+                end
+                ap_times(times_in) = obj.metrics.matchConfidence(~keepTimes);
             else
                 ap_times(times_in) = 1;
             end
@@ -311,8 +318,14 @@ classdef SingleUnit < handle
                 rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
                 rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
             else
-                rateA = sum(obj.extra.match_confidence(obj.times > epochA(1) & obj.times <= epochA(2)))/range(epochA);
-                rateB = sum(obj.extra.match_confidence(obj.times > epochB(1) & obj.times <= epochB(2)))/range(epochB);
+                if ~isfield(obj.metrics.matchConfidence) && isfield(obj.extra.match_confidence)
+                    obj.metrics.matchConfidence = obj.extra.match_confidence; % leftover from old version
+                end
+                if ~isfield(obj.metrics.matchConfidence) || length(obj.metrics.matchConfidence) ~= length(obj.times)
+                    error('Need metrics.matchConfidence field to be set to the same length as number of spikes before scaling can be used')
+                end
+                rateA = sum(obj.metrics.matchConfidence(obj.times > epochA(1) & obj.times <= epochA(2)))/range(epochA);
+                rateB = sum(obj.metrics.matchConfidence(obj.times > epochB(1) & obj.times <= epochB(2)))/range(epochB);
             end
             rates = [rateA rateB];
             
@@ -645,7 +658,7 @@ classdef SingleUnit < handle
                 keypoint = ind + (settings.troughIndex*settings.uprate) - 21;
                 if keypoint < 1 || keypoint > length(fwhmWv)
                     obj.metrics.FWHM = Inf;
-                    disp([9 'Couldn''t find FWHM'])
+                    warning([9 'Couldn''t find FWHM'])
                 else
                     fwhmWv = fwhmWv - fwhmWv(keypoint);
                     fwhmWv = 2 * (fwhmWv/max(fwhmWv(settings.troughIndex*settings.uprate:end)) - 0.5);
@@ -667,7 +680,7 @@ classdef SingleUnit < handle
                         obj.metrics.FWHM = ((post_ind-subtraction) - (pre_ind+addition))/((obj.Fs/1e3)*settings.uprate);
                     else
                         obj.metrics.FWHM = Inf;
-                        disp([9 'Couldn''t find FWHM'])
+                        warning([9 'Couldn''t find FWHM'])
                     end
                 end
             end

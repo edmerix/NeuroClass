@@ -53,6 +53,21 @@ data.order_by_rate();
 % Show a speedy (but ugly) raster plot in current order:
 data.raster();
 
+% Calculate quality metrics, as proposed by Hill et al., JNeurosci (2011),
+% along with some extras.
+% First run through the Gaussian estimates of false +ve/-ves with channels:
+data.calculateMetrics();
+% Now calculate the individual metrics for each unit:
+for u = 1:length(data.units)
+    data.units(u).calculateMetrics(); % Using default settings, see help SingleUnit.calculateMetrics for options
+end
+
+% Find out what the false positive estimate of the last unit is:
+data.units(end).metrics.falsePositiveRate()
+
+% List all metrics for the first unit:
+data.units(1).metrics
+
 % Show a slow (but pretty) raster plot, highlighting unit 23, onto an axes 
 % object with the handle "bigAx":
 hFig = figure('Units', 'normalized', 'Position', [0.02 0.02 0.9 0.9]);  % make a big figure
@@ -63,7 +78,7 @@ data.beefyraster('highlight', 23, 'ax', bigAx);                         % plot t
 top_ch = data.top_channels(5);
 
 % Get just the units from channel 9:
-units = data.channel_units(9);
+units = data.channel_units(9); % Can pass in an electrode label as a char instead if not using channel numbers
 
 % Visually inspect the 2nd unit from this channel (show waveforms through 
 % time, voltage at detection, autocorrelation, Mahalanobis distance and 
@@ -76,11 +91,22 @@ data.units(79).inspect_unit();
 
 % Calculate and retrieve a Gaussian kernel estimate of the firing rate of 
 % the first unit on this channel:
-units(1).gaussian_fr(5);    % where 5 is the width of the Gaussian in the same units as units(1).times;
-[gfr, tt] = units(1).retrieve_gauss_fr();
+[gfr, tt] = units(1).gaussian_fr(200);    % where 200 is the width of the Gaussian in milliseconds
 
 % Plot that estimate of the firing rate:
 figure, plot(tt, gfr);
+
+% Find significant (using a Poisson distribution estimate of SD) firing
+% rate changes between two epochs: (using first versus second 5 mins as
+% example)
+sd = data.fr_changes([0 300],[300 600]); % This will also make an overview plot, unless 'plot', false is set.
+% Can also set 'scaling' to true in the above function to calculate firing
+% rate changes weighted by each action potential's match confidence to its
+% assigned unit, if match_confidence has been calculated and set.
+
+% Calculate the signal-to-noise ratio of each unit:
+data.unit_snr();
+% Now, data.snr(10) tells you the SNR of the 10th unit.
 
 % Show all available methods of the MultipleUnits collection:
 methods('MultipleUnits')
@@ -91,7 +117,7 @@ methods('SingleUnit')
 %-------------------------------------------------------------------------%
 % Other important properties for SingleUnit:
 %   wideband        the mean wideband waveform
-%   celltype        what cell-type it's classified as (use UnitSubclassify)
+%   celltype        what cell-type it's classified as (use other toolboxes)
 %-------------------------------------------------------------------------%
 % Store any other data you want in the "extra" field in each SingleUnit.
 %-------------------------------------------------------------------------%
