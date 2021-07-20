@@ -678,7 +678,7 @@ classdef MultipleUnits < handle
                             conf = gaussian_overlap(chanUnits(pairs(p,1)).waveforms,chanUnits(pairs(p,2)).waveforms);
                         catch err
                             if isElec
-                                insert = ['electrode ' num2str(chans{c})];
+                                insert = ['electrode ' chans{c}];
                             else
                                 insert = ['channel ' num2str(chans(c))];
                             end
