@@ -677,7 +677,12 @@ classdef MultipleUnits < handle
                         try
                             conf = gaussian_overlap(chanUnits(pairs(p,1)).waveforms,chanUnits(pairs(p,2)).waveforms);
                         catch err
-                            warning(['Had error during gaussian_overlap calculation for channel ' num2str(chans(c)) ', setting to NaNs:'])
+                            if isElec
+                                insert = ['electrode ' num2str(chans{c})];
+                            else
+                                insert = ['channel ' num2str(chans(c))];
+                            end
+                            warning(['Had error during gaussian_overlap calculation for ' insert ', setting to NaNs:'])
                             disp([9 '(' err.message ')'])
                             conf = nan(2,2);
                         end
