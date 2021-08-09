@@ -318,11 +318,11 @@ classdef SingleUnit < handle
                 rateA = (length(find(obj.times > epochA(1) & obj.times <= epochA(2))))/range(epochA);
                 rateB = (length(find(obj.times > epochB(1) & obj.times <= epochB(2))))/range(epochB);
             else
-                if ~isfield(obj.metrics.matchConfidence) && isfield(obj.extra.match_confidence)
+                if (~isprop(obj.metrics, 'matchConfidence') || isempty(obj.metrics.matchConfidence)) && isfield(obj.extra,'match_confidence')
                     obj.metrics.matchConfidence = obj.extra.match_confidence; % leftover from old version
                 end
-                if ~isfield(obj.metrics.matchConfidence) || length(obj.metrics.matchConfidence) ~= length(obj.times)
-                    error('Need metrics.matchConfidence field to be set to the same length as number of spikes before scaling can be used')
+                if ~isprop(obj.metrics,'matchConfidence') || length(obj.metrics.matchConfidence) ~= length(obj.times)
+                    error(['Need SingleUnit.metrics.matchConfidence field to be set to the same length as number of spikes before scaling can be used. (UID ' num2str(obj.UID) ')'])
                 end
                 rateA = sum(obj.metrics.matchConfidence(obj.times > epochA(1) & obj.times <= epochA(2)))/range(epochA);
                 rateB = sum(obj.metrics.matchConfidence(obj.times > epochB(1) & obj.times <= epochB(2)))/range(epochB);
