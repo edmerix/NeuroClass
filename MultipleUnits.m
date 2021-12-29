@@ -704,6 +704,13 @@ classdef MultipleUnits < handle
                 end
             end
         end
+        
+        function unit = getUID(obj,UID)
+            if nargin < 2 || isempty(UID)
+                error('Need a UID (unique identifier number) for a unit to select')
+            end
+            unit = obj.units([obj.units.UID] == UID);
+        end
     end
     
     methods (Static = true)
