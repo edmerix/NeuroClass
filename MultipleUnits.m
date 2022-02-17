@@ -47,23 +47,24 @@ classdef MultipleUnits < handle
         end
         % re-order units by rate
         function order_by_rate(obj)
-            tot = zeros(1,length(obj.units));
-            for n = 1:length(obj.units)
-                tot(n) = length(obj.units(n).times);
-            end
+            tot = cellfun(@length,{obj.units.times});
             [~,ord] = sort(tot,'ascend');
             obj.units = obj.units(ord);
             obj.current_order = 'rate';
         end
         % re-order units by channel
         function order_by_channel(obj)
-            chan = zeros(1,length(obj.units));
-            for n = 1:length(obj.units)
-                chan(n) = obj.units(n).channel;
-            end
+            chan = [obj.units.channel];
             [~,ord] = sort(chan,'ascend');
             obj.units = obj.units(ord);
             obj.current_order = 'channel';
+        end
+        % re-order units by electrode label (alphabetically)
+        function order_by_electrode(obj)
+            elecs = {obj.units.electrodelabel};
+            [~,ord] = sort(elecs);
+            obj.units = obj.units(ord);
+            obj.current_order = 'electrode';
         end
         % re-order units by user-supplied order of UIDs
         function order_by_UID(obj,UIDorder)
