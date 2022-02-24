@@ -91,6 +91,8 @@ classdef MultipleUnits < handle
             settings.in_color = [0.64 0.08 0.18];
             settings.in_maybe_color = [1 0.41 0.16];
             settings.linewidth = 1;
+            settings.scaled = false;
+            
             for v = 1:2:length(varargin)
                 settings.(varargin{v}) = varargin{v+1};
             end
@@ -136,8 +138,22 @@ classdef MultipleUnits < handle
                 
                 trialXPoints = [obj.units(u).times'; obj.units(u).times'; nanSeparator];
                 trialXPoints = trialXPoints(:);
-                
-                trialYPoints = [(u-0.5)*ones(1,nSpikes); (u+0.5)*ones(1,nSpikes); nanSeparator];
+                if settings.scaled
+                    if isempty(obj.units(u).metrics.matchConfidence)
+                        % try and find them under the locations from old versions:
+                        if isfield(obj.units(u).extra,'match_confidence')
+                            obj.units(u).metrics.matchConfidence = obj.units(u).extra.match_confidence;
+                        elseif isfield(obj.units(u).extra,'probabilities')
+                            obj.units(u).metrics.matchConfidence = obj.units(u).extra.probabilities;
+                        else
+                            error('Need to have waveform match confidence stored in the "matchConfidence" field under "metrics" for each unit')
+                        end
+                    end
+                    offsets = obj.units(u).metrics.matchConfidence/2;
+                    trialYPoints = [(u-offsets).*ones(1,nSpikes); (u+offsets).*ones(1,nSpikes); nanSeparator];
+                else
+                    trialYPoints = [(u-0.5)*ones(1,nSpikes); (u+0.5)*ones(1,nSpikes); nanSeparator];
+                end
                 trialYPoints = trialYPoints(:);
                 
                 % Save points and update current index
