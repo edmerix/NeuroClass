@@ -189,6 +189,12 @@ classdef MultipleUnits < handle
             ylim(settings.axes,[0.5 length(obj.units)+0.5])
             xlabel(settings.axes,'Time (s)')
             ylabel(settings.axes,['Neuron ranking (by ' obj.current_order ')']);
+            if strcmp(obj.current_order,'electrode')
+                elecLabels = {obj.units.electrodelabel};
+                settings.axes.YTick = 1:length(obj.units);
+                settings.axes.YTickLabel = elecLabels;
+                settings.axes.YTickLabelRotation = 35;
+            end
             set(settings.axes,'tickdir','out');
         end
         % full raster plot (slow, but color-able beyond just by cell type)
