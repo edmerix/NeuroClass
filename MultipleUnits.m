@@ -139,6 +139,9 @@ classdef MultipleUnits < handle
                 trialXPoints = [obj.units(u).times'; obj.units(u).times'; nanSeparator];
                 trialXPoints = trialXPoints(:);
                 if settings.scaled
+                    if isempty(obj.units(u).metrics)
+                        obj.units(u).metrics = UnitMetrics();
+                    end
                     if isempty(obj.units(u).metrics.matchConfidence)
                         % try and find them under the locations from old versions:
                         if isfield(obj.units(u).extra,'match_confidence')
