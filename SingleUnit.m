@@ -83,7 +83,7 @@ classdef SingleUnit < handle
                 if isempty(obj.metrics)
                     obj.metrics = UnitMetrics();
                 end
-                if isempty(obj.metrics.matchConfidence)
+                if isempty(obj.metrics.matchConfidence) && ~isempty(obj.times)
                     % try and find them under the locations from old versions:
                     if isfield(obj.extra,'match_confidence')
                         obj.metrics.matchConfidence = obj.extra.match_confidence;
