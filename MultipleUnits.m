@@ -622,6 +622,13 @@ classdef MultipleUnits < handle
         function unit = get_unit(obj,UID)
             unit = obj.units([obj.units.UID] == UID);
         end
+        % Duplicate of above that's being left for backwards compatibility:
+        function unit = getUID(obj,UID)
+            if nargin < 2 || isempty(UID)
+                error('Need a UID (unique identifier number) for a unit to select')
+            end
+            unit = obj.units([obj.units.UID] == UID);
+        end
         % Save this structure in the default/specified location
         function save(obj,varargin)
             settings.path = mfilename('fullpath');
@@ -654,11 +661,11 @@ classdef MultipleUnits < handle
             % the class definition on your path)
             mat = matfile(savename,'Writable',true);
             mat.(settings.name) = obj;
+            clear mat
             %}
             save(savename,'data');
             disp(['Saved NeuroClass data as variable ''' settings.name ''' in:'])
             disp([9 savename]);
-            clear mat
         end
         
         function calculateMetrics(obj)
@@ -731,12 +738,6 @@ classdef MultipleUnits < handle
             end
         end
         
-        function unit = getUID(obj,UID)
-            if nargin < 2 || isempty(UID)
-                error('Need a UID (unique identifier number) for a unit to select')
-            end
-            unit = obj.units([obj.units.UID] == UID);
-        end
     end
     
     methods (Static = true)
