@@ -142,7 +142,7 @@ classdef MultipleUnits < handle
                     if isempty(obj.units(u).metrics)
                         obj.units(u).metrics = UnitMetrics();
                     end
-                    if isempty(obj.units(u).metrics.matchConfidence)
+                    if isempty(obj.units(u).metrics.matchConfidence) && ~isempty(obj.units(u).times)
                         % try and find them under the locations from old versions:
                         if isfield(obj.units(u).extra,'match_confidence')
                             obj.units(u).metrics.matchConfidence = obj.units(u).extra.match_confidence;
