@@ -66,7 +66,8 @@ classdef SingleUnit < handle
             forced_timings = forced_timings - offset;
             forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
             
-            times_in = obj.times - offset;
+            forced_timings = forced_timings * 1e3; % use milliseconds
+            times_in = round((obj.times - offset)*1e3); % use milliseconds here to avoid rare zero indices after rounding
             keepTimes = times_in <= forced_timings(1) | times_in > forced_timings(2);
             times_in(keepTimes) = [];
             if nargin < 4 || isempty(matchScaling)
@@ -76,9 +77,9 @@ classdef SingleUnit < handle
             gaussSize = [1 SD*10]; % size of Gaussian window (make sure it doesn't get clipped)
             w = fspecial('gaussian',gaussSize,SD);
             
-            tt = forced_timings(1)*1e3:forced_timings(2)*1e3;
+            tt = forced_timings(1):forced_timings(2);
             ap_times = zeros(size(tt));
-            times_in = round(times_in*1e3); % use milliseconds
+            %times_in = round(times_in*1e3); % use milliseconds (superseded above)
             if matchScaling
                 if isempty(obj.metrics)
                     obj.metrics = UnitMetrics();
