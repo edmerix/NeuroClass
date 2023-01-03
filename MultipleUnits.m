@@ -418,7 +418,7 @@ classdef MultipleUnits < handle
         function units = channel_units(obj,chan)
             picked = zeros(1,length(obj.units));
             for u = 1:length(obj.units)
-                if (ischar(chan) && strcmpi(obj.units(u).electrodelabel, chan)) || ...
+                if (ischar(chan) && strcmpi(obj.units(u).electrodelabel, chan)) | ...
                         (isnumeric(chan) && obj.units(u).channel == chan)
                     picked(u) = 1;
                 end
