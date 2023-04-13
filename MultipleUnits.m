@@ -324,8 +324,8 @@ classdef MultipleUnits < handle
             ylabel(ax(1),'Unit number')
             zlabel(ax(1),'Voltage (\muV)')
             view(ax(1),3)
-            
-            full_waves = cell2mat({these_units.waveforms}');
+
+            full_waves = vertcat(these_units.waveforms);
             [~,pc] = pca(full_waves);
             unq_assigns = unique(assigns,'stable');
             for u = 1:length(unq_assigns)
@@ -406,11 +406,15 @@ classdef MultipleUnits < handle
                 epoch = obj.epoch;
             end
             if length(obj.units(end).times) > 1 && isrow(obj.units(end).times)
-                all_t = cell2mat([obj.units.times]);
+                %all_t = cell2mat([obj.units.times]);
+                all_t = horzcat(obj.units.times);
             else
+                %{
                 all_t = {obj.units.times};
                 all_t(cellfun(@isempty,all_t)) = [];
                 all_t = cell2mat(all_t');
+                %}
+                all_t = vertcat(obj.units.times);
             end
             all_t(all_t < epoch(1) | all_t > epoch(2)) = [];
         end
