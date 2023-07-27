@@ -472,7 +472,7 @@ classdef MultipleUnits < handle
             end
         end
         % Get gaussian estimate of firing across population:
-        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling)
+        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling,forceOldMethod)
             if nargin < 2 || isempty(SD)
                 SD = 200;
             end
@@ -482,6 +482,9 @@ classdef MultipleUnits < handle
             end
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
+            end
+            if nargin < 4 || isempty(forceOldMethod)
+                forceOldMethod = true; % After new publication this will be set to false. Keeping as true for now to avoid having to edit all the code for that paper!
             end
             
             offset = min(forced_timings);
@@ -501,7 +504,7 @@ classdef MultipleUnits < handle
             disp([9 '(using a bin width of ' num2str(SD) ' ms, from ' num2str(forced_timings(1)) ' to ' num2str(forced_timings(2)) ' seconds)'])
             prntd = 0;
             for u = 1:length(obj.units)
-                full_fr(u,:) = obj.units(u).gaussian_fr(SD,forced_timings,matchScaling);
+                full_fr(u,:) = obj.units(u).gaussian_fr(SD,forced_timings,matchScaling,forceOldMethod);
                 prc = (u/length(obj.units)) * tot;
                 if floor(prc) > prntd
                     fprintf('|');

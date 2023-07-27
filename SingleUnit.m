@@ -45,7 +45,7 @@ classdef SingleUnit < handle
             end
         end
         % create the firing rate estimate
-        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling)
+        function [fr, tt] = gaussian_fr(obj,SD,forced_timings,matchScaling,forceOldMethod)
             % Convolve a Gaussian of supplied SD (in ms, defaults to
             % 200) over the spike times (resolution of 1 ms).
             % Can also supply "forced_timings" which will keep the min and
@@ -63,6 +63,10 @@ classdef SingleUnit < handle
                 forced_timings = [min(obj.times) max(obj.times)];
                 offset = floor(min(obj.times));
             end
+            if nargin < 5 || isempty(forceOldMethod)
+                forceOldMethod = true;  % After new publication this will be set to false. Keeping as true for now to avoid having to edit all the code for that paper!
+            end
+                
             forced_timings = forced_timings - offset;
             forced_timings = [floor(forced_timings(1)) ceil(forced_timings(2))];
             
@@ -74,8 +78,18 @@ classdef SingleUnit < handle
                 matchScaling = false;
             end
             
-            gaussSize = [1 SD*10]; % size of Gaussian window (make sure it doesn't get clipped)
-            w = fspecial('gaussian',gaussSize,SD);
+            % fspecial is not recommended and requires the Image Processing
+            % Toolbox. The new method with makedist gives infinitesimally
+            % different results (the maxima are < 0.0001% different) so if
+            % the previous method is needed to repeat previous analyses to
+            % that level of precision, we should fallback on fspecial:
+            if forceOldMethod
+                gaussSize = [1 SD*10]; % size of Gaussian window (make sure it doesn't get clipped)
+                w = fspecial('gaussian',gaussSize,SD);
+            else
+                gd = makedist('normal','mu',0,'sigma',SD);
+                w = gd.pdf(linspace(-SD*5,SD*5,SD*10));
+            end
             
             tt = forced_timings(1):forced_timings(2);
             ap_times = zeros(size(tt));
