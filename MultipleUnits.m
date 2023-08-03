@@ -483,7 +483,7 @@ classdef MultipleUnits < handle
             if nargin < 4 || isempty(matchScaling)
                 matchScaling = false;
             end
-            if nargin < 4 || isempty(forceOldMethod)
+            if nargin < 5 || isempty(forceOldMethod)
                 forceOldMethod = true; % After new publication this will be set to false. Keeping as true for now to avoid having to edit all the code for that paper!
             end
             
